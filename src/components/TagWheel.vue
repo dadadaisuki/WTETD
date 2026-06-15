@@ -316,7 +316,6 @@ watch(() => props.items, () => {
   height: 100%;
   border: 12px solid #151515;
   border-radius: 50%;
-  box-shadow: 10px 10px 0 #151515;
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -326,11 +325,11 @@ watch(() => props.items, () => {
 .wheel-disc::before {
   content: "";
   position: absolute;
-  inset: 10px;
+  inset: -12px;
+  z-index: -1;
+  border: 4px solid #151515;
   border-radius: 50%;
-  background:
-    radial-gradient(circle, rgba(21, 21, 21, 0.18) 0 2px, transparent 2px) 0 0 / 18px 18px;
-  mix-blend-mode: multiply;
+  background: transparent;
   pointer-events: none;
 }
 
@@ -338,8 +337,10 @@ watch(() => props.items, () => {
   content: "";
   position: absolute;
   inset: 18px;
-  border: 3px dashed #151515;
   border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(21, 21, 21, 0.18) 0 2px, transparent 2px) 0 0 / 18px 18px;
+  mix-blend-mode: multiply;
   pointer-events: none;
 }
 
@@ -375,6 +376,15 @@ watch(() => props.items, () => {
   place-items: center;
   align-content: center;
   box-shadow: 6px 6px 0 #151515;
+}
+
+.wheel-disc__center::before {
+  content: "";
+  position: absolute;
+  inset: -16px;
+  border: 3px dashed #151515;
+  border-radius: 50%;
+  pointer-events: none;
 }
 
 .wheel-disc__center small {

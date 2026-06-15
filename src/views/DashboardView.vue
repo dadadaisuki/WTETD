@@ -22,9 +22,6 @@ const {
   allDishTags,
   allSceneTags,
   dishes,
-  isFetchingMeituan,
-  loadMeituanNearbyRanking,
-  meituanMessage,
   merchants,
 } = useDiningStore()
 
@@ -79,6 +76,28 @@ const getMerchantDishes = (merchantId) => {
 const getMerchantTags = (merchant) => {
   return [...new Set([...(merchant.scene_tags || []), ...(merchant.custom_tags || [])])]
     .filter((tag) => tag && tag !== '??')
+}
+
+const getMerchantOriginBadges = (merchant) => {
+  const relatedDishes = getMerchantDishes(merchant.id)
+  const dishTags = relatedDishes.flatMap((dish) => dish.tags || [])
+  const merchantTags = getMerchantTags(merchant)
+  const badges = []
+  const isOutside = merchant.source === 'meituan'
+    || merchant.zone?.includes('校外')
+    || merchantTags.includes('校外')
+  const isTakeout = merchantTags.includes('外卖')
+    || merchantTags.includes('外卖爆款')
+    || dishTags.includes('外卖')
+    || dishTags.includes('外卖爆款')
+
+  badges.push(isOutside ? '校园外' : '校园内')
+
+  if (isTakeout) {
+    badges.push('外卖')
+  }
+
+  return badges
 }
 
 const getDishChips = (dish) => {
@@ -174,18 +193,6 @@ const toggleMerchant = (merchantId) => {
       </p>
     </div>
 
-    <div class="toolbar">
-      <button
-        type="button"
-        class="steel-button"
-        :disabled="isFetchingMeituan"
-        @click="loadMeituanNearbyRanking"
-      >
-        {{ isFetchingMeituan ? '同步中...' : '同步周边商家' }}
-      </button>
-      <p>{{ meituanMessage }}</p>
-    </div>
-
     <label class="search-box">
       <span>搜索店铺 / 菜品 / Tag</span>
       <input
@@ -233,8 +240,14 @@ const toggleMerchant = (merchantId) => {
       >
         <div class="merchant-card__shell">
           <div class="merchant-card__topline">
-            <span>{{ merchant.source === 'meituan' ? '校外' : '校园' }}</span>
-            <small>{{ merchant.zone }}</small>
+            <div class="merchant-card__badges">
+              <span
+                v-for="badge in getMerchantOriginBadges(merchant)"
+                :key="`${merchant.id}-${badge}`"
+              >
+                {{ badge }}
+              </span>
+            </div>
           </div>
 
           <h3>{{ merchant.name }}</h3>
@@ -258,6 +271,10 @@ const toggleMerchant = (merchantId) => {
                   <strong>{{ merchant.heat || 0 }}</strong>
                 </div>
               </div>
+
+              <p class="merchant-card__location">
+                {{ merchant.zone }}
+              </p>
 
               <div class="dish-preview">
                 <div class="dish-preview__head">
@@ -380,18 +397,10 @@ const toggleMerchant = (merchantId) => {
   text-shadow: 3px 3px 0 var(--paper), 6px 6px 0 var(--lime);
 }
 
-.section-heading p,
-.toolbar p {
+.section-heading p {
   margin: 0;
   color: #383838;
   font-weight: 700;
-}
-
-.toolbar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 14px;
 }
 
 .search-box {
@@ -424,7 +433,6 @@ const toggleMerchant = (merchantId) => {
   font-weight: 700;
 }
 
-.steel-button,
 .filter-drawer__trigger,
 .check-chip {
   border: var(--border-strong);
@@ -433,26 +441,6 @@ const toggleMerchant = (merchantId) => {
   color: var(--ink);
   font: inherit;
   cursor: pointer;
-}
-
-.steel-button {
-  padding: 12px 18px;
-  background: var(--sky);
-  color: var(--ink);
-  font-weight: 900;
-  box-shadow: 4px 4px 0 #151515;
-  transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
-}
-
-.steel-button:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 7px 7px 0 #151515;
-  background: var(--yellow);
-}
-
-.steel-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.58;
 }
 
 .filter-drawer {
@@ -571,7 +559,7 @@ const toggleMerchant = (merchantId) => {
 
 .merchant-card::after {
   bottom: 16px;
-  left: 18px;
+  right: 18px;
   width: 92px;
   height: 16px;
   border-radius: 999px;
@@ -633,14 +621,17 @@ const toggleMerchant = (merchantId) => {
 
 .merchant-card__topline {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
-  color: #3e3e3e;
-  font-size: 12px;
-  letter-spacing: 0.1em;
 }
 
-.merchant-card__topline span {
+.merchant-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.merchant-card__badges span {
   padding: 5px 9px;
   border-radius: 999px;
   border: 2px solid #151515;
@@ -648,6 +639,14 @@ const toggleMerchant = (merchantId) => {
   color: var(--ink);
   font-weight: 900;
   letter-spacing: 0;
+}
+
+.merchant-card__badges span:nth-child(2n) {
+  background: var(--sky);
+}
+
+.merchant-card__badges span:nth-child(3n) {
+  background: var(--lime);
 }
 
 .merchant-card h3 {
@@ -664,6 +663,13 @@ const toggleMerchant = (merchantId) => {
   color: #3b3b3b;
   font-size: 14px;
   font-weight: 700;
+}
+
+.merchant-card__location {
+  margin: 0;
+  color: #3f3f3f;
+  font-size: 14px;
+  font-weight: 800;
 }
 
 .merchant-card__details {

@@ -93,7 +93,7 @@ onBeforeUnmount(() => {
 
     <header class="topbar">
       <button type="button" class="brand-mark" @click="handleMenuChange('home')">
-        WMDW
+        主页
       </button>
 
       <div class="sync-strip">

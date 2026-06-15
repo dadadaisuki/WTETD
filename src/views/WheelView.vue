@@ -195,21 +195,6 @@ const visibleCooldownSeconds = computed(() => {
   return cooldownLocked.value ? Math.max(1, cooldownSeconds.value) : 0
 })
 
-const speakResult = (dish) => {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-    return
-  }
-
-  const utterance = new SpeechSynthesisUtterance(
-    `今天推荐 ${dish.name}，来自 ${getMerchantName(dish.merchant_id)}。`,
-  )
-
-  utterance.lang = 'zh-CN'
-  utterance.rate = 0.95
-  window.speechSynthesis.cancel()
-  window.speechSynthesis.speak(utterance)
-}
-
 const vibrateResult = () => {
   if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
     navigator.vibrate([80, 40, 140, 50, 220])
@@ -237,7 +222,6 @@ const startCooldown = () => {
 
 const handleSpinFinished = (dish) => {
   pendingResult.value = dish
-  speakResult(dish)
   vibrateResult()
 }
 
