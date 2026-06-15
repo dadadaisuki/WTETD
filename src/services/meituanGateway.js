@@ -10,35 +10,35 @@ const fallbackMerchants = [
   {
     id: 'meituan-hot-potato',
     name: '科技六路热辣拌',
-    zone: '校外 480m · 美团登记',
+    zone: '校外 480m · 周边登记',
     source: 'meituan',
     rating: 4.7,
     monthly_sales: 3140,
     heat: 77,
     scene_tags: ['校外', '外卖爆款', '高性价比'],
-    custom_tags: ['热辣拌', '下课冲', '美团榜单'],
+    custom_tags: ['热辣拌', '下课冲', '周边登记'],
   },
   {
     id: 'meituan-soup-rice',
     name: '丈八汤饭研究所',
-    zone: '校外 760m · 美团登记',
+    zone: '校外 760m · 周边登记',
     source: 'meituan',
     rating: 4.6,
     monthly_sales: 2298,
     heat: 71,
     scene_tags: ['校外', '外卖爆款', '控卡减脂'],
-    custom_tags: ['汤饭', '暖胃', '美团榜单'],
+    custom_tags: ['汤饭', '暖胃', '周边登记'],
   },
   {
     id: 'meituan-bbq',
     name: '高新烤肉拌饭',
-    zone: '校外 690m · 美团登记',
+    zone: '校外 690m · 周边登记',
     source: 'meituan',
     rating: 4.8,
     monthly_sales: 3580,
     heat: 83,
     scene_tags: ['校外', '外卖爆款', '高性价比'],
-    custom_tags: ['烤肉', '米饭', '美团榜单'],
+    custom_tags: ['烤肉', '米饭', '周边登记'],
   },
 ]
 
@@ -110,13 +110,13 @@ const normalizeMerchant = (merchant, index) => {
   return {
     id: String(rawId).startsWith('meituan-') ? String(rawId) : `meituan-${rawId}`,
     name: merchant.name || merchant.shop_name || merchant.title || `美团商家 ${index + 1}`,
-    zone: distance ? `校外 ${distance} · 美团登记` : '校外 800m 内 · 美团登记',
+    zone: distance ? `校外 ${distance} · 周边登记` : '校外 800m 内 · 周边登记',
     source: 'meituan',
     rating: Number(merchant.rating || merchant.avg_score || merchant.score || merchant.wm_poi_score || 4.6),
     monthly_sales: Number(sales),
     heat: Number(merchant.heat || merchant.hot || merchant.popularity || sales || 50),
     scene_tags: ['校外', '外卖爆款'],
-    custom_tags: ['美团榜单', merchant.average_price_tip, merchant.status_desc, ...tags].filter(Boolean).slice(0, 6),
+    custom_tags: ['周边登记', merchant.average_price_tip, merchant.status_desc, ...tags].filter(Boolean).slice(0, 6),
   }
 }
 
@@ -164,7 +164,7 @@ export const fetchMeituanNearbyRanking = async () => {
   if (!proxyUrl && !apiUrl) {
     return {
       source: 'fallback',
-      message: '未配置真实美团榜单 API，当前使用西安文理学院 800m 校外兜底榜单。',
+      message: '未配置真实周边餐饮 API，当前使用西安文理学院 800m 校外兜底商家。',
       merchants: fallbackMerchants,
     }
   }
@@ -175,7 +175,7 @@ export const fetchMeituanNearbyRanking = async () => {
 
     return {
       source: 'proxy',
-      message: `已通过代理按 ${SCHOOL_CENTER.address} 周边 ${SCHOOL_CENTER.radius}m 拉取美团登记商家。`,
+      message: `已通过代理按 ${SCHOOL_CENTER.address} 周边 ${SCHOOL_CENTER.radius}m 拉取周边登记商家。`,
       merchants: list.map(normalizeMerchant),
     }
   }
@@ -191,7 +191,7 @@ export const fetchMeituanNearbyRanking = async () => {
   })
 
   if (!response.ok) {
-    throw new Error(`美团榜单接口请求失败：${response.status}`)
+    throw new Error(`周边餐饮接口请求失败：${response.status}`)
   }
 
   const payload = await response.json()
@@ -199,7 +199,7 @@ export const fetchMeituanNearbyRanking = async () => {
 
   return {
     source: 'api',
-    message: `已按 ${SCHOOL_CENTER.address} 周边 ${SCHOOL_CENTER.radius}m 拉取美团登记商家。`,
+    message: `已按 ${SCHOOL_CENTER.address} 周边 ${SCHOOL_CENTER.radius}m 拉取周边登记商家。`,
     merchants: list.map(normalizeMerchant),
   }
 }

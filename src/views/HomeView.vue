@@ -29,7 +29,7 @@ const chooseModule = (key) => {
       <p class="hero-copy__overline">Campus Food Decision System</p>
       <h1 class="hero-copy__title">今天吃什么</h1>
       <p class="hero-copy__subtitle">
-        是啊，吃什么
+        先选一个入口：看周边、转轮盘，或者把你发现的好店补充进去。
       </p>
     </div>
 

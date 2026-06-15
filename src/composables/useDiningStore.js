@@ -20,7 +20,44 @@ const safeClone = (value) => JSON.parse(JSON.stringify(value))
 const normalizeText = (value) => String(value || '').trim()
 
 const normalizeList = (list) => {
-  return [...new Set((list || []).map(normalizeText).filter(Boolean))]
+  return [...new Set((list || [])
+    .map(normalizeText)
+    .filter((item) => item && item !== '??'))]
+}
+
+const retiredTestMerchantIds = new Set([
+  'merchant-test-noodle',
+  'merchant-test-rice',
+  'merchant-test-light',
+  'merchant-test-snack',
+])
+
+const retiredTestDishNames = new Set(['验收牛肉拌饭'])
+const retiredTestMerchantNames = new Set(['验收测试店铺A'])
+
+const isRetiredTestMerchant = (merchant) => {
+  return retiredTestMerchantIds.has(merchant.id)
+    || retiredTestMerchantNames.has(merchant.name)
+    || merchant.source === 'test-poi'
+}
+
+const isRetiredTestDish = (dish, retiredMerchantIds = retiredTestMerchantIds) => {
+  return String(dish.id || '').startsWith('dish-test-')
+    || retiredTestDishNames.has(dish.name)
+    || retiredMerchantIds.has(dish.merchant_id)
+}
+
+const sanitizeDiningData = (nextMerchants = [], nextDishes = []) => {
+  const visibleMerchants = nextMerchants.filter((merchant) => !isRetiredTestMerchant(merchant))
+  const visibleMerchantIds = new Set(visibleMerchants.map((merchant) => merchant.id))
+
+  return {
+    merchants: visibleMerchants,
+    dishes: nextDishes.filter((dish) => (
+      visibleMerchantIds.has(dish.merchant_id)
+      && !isRetiredTestDish(dish)
+    )),
+  }
 }
 
 const createId = (prefix) => {
@@ -68,12 +105,17 @@ const hydrateLocalData = () => {
     return
   }
 
-  if (Array.isArray(cached.merchants) && cached.merchants.length > 0) {
-    merchants.value = cached.merchants
+  const sanitized = sanitizeDiningData(
+    Array.isArray(cached.merchants) ? cached.merchants : [],
+    Array.isArray(cached.dishes) ? cached.dishes : [],
+  )
+
+  if (sanitized.merchants.length > 0) {
+    merchants.value = sanitized.merchants
   }
 
-  if (Array.isArray(cached.dishes) && cached.dishes.length > 0) {
-    dishes.value = cached.dishes
+  if (sanitized.dishes.length > 0) {
+    dishes.value = sanitized.dishes
   }
 }
 
@@ -138,12 +180,17 @@ export const refreshFromCloud = async () => {
       gateway.getDishes(),
     ])
 
-    if (Array.isArray(cloudMerchants) && cloudMerchants.length > 0) {
-      merchants.value = cloudMerchants
+    const sanitized = sanitizeDiningData(
+      Array.isArray(cloudMerchants) ? cloudMerchants : [],
+      Array.isArray(cloudDishes) ? cloudDishes : [],
+    )
+
+    if (sanitized.merchants.length > 0) {
+      merchants.value = sanitized.merchants
     }
 
-    if (Array.isArray(cloudDishes) && cloudDishes.length > 0) {
-      dishes.value = cloudDishes
+    if (sanitized.dishes.length > 0) {
+      dishes.value = sanitized.dishes
     }
 
     syncMessage.value = '已刷新标签与热度数据'
@@ -210,6 +257,19 @@ export const useDiningStore = () => {
   }
 
   const addDish = (payload) => {
+    const merchant = merchantById.value.get(payload.merchant_id)
+    const merchantTags = [
+      ...(merchant?.scene_tags || []),
+      ...(merchant?.custom_tags || []),
+    ]
+    const payloadTags = normalizeList(payload.tags)
+    const shouldMarkTakeaway = merchant?.source === 'meituan'
+      || merchantTags.includes('校外')
+      || merchantTags.includes('外卖')
+      || merchantTags.includes('外卖爆款')
+      || payloadTags.includes('校外')
+      || payloadTags.includes('外卖爆款')
+
     const dish = {
       id: createId('dish'),
       merchant_id: payload.merchant_id,
@@ -217,7 +277,7 @@ export const useDiningStore = () => {
       calories: Number(payload.calories) || 0,
       price: Number(payload.price) || 0,
       heat: 1,
-      tags: normalizeList(payload.tags),
+      tags: normalizeList([...payloadTags, shouldMarkTakeaway ? '外卖' : '']),
       ingredients: normalizeList(payload.ingredients),
       updated_at: new Date().toISOString(),
     }
@@ -334,9 +394,9 @@ export const useDiningStore = () => {
       const merged = mergeMerchants(result.merchants)
       meituanMessage.value = result.message
 
-      queueSync('美团登记商家', () => gateway.upsertMerchants(merged))
+      queueSync('周边登记商家', () => gateway.upsertMerchants(merged))
     } catch (error) {
-      meituanMessage.value = '美团榜单拉取失败，请检查接口地址、鉴权或浏览器跨域限制。'
+      meituanMessage.value = '周边餐饮数据拉取失败，请检查接口地址、鉴权或浏览器跨域限制。'
       console.error(error)
     } finally {
       isFetchingMeituan.value = false

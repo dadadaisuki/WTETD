@@ -147,7 +147,7 @@ export const seedDishes = [
     calories: 460,
     price: 19,
     heat: 28,
-    tags: ['控卡减脂', '高蛋白', '外卖爆款'],
+    tags: ['控卡减脂', '高蛋白', '外卖爆款', '外卖'],
     ingredients: ['金枪鱼', '全麦饼', '生菜', '番茄'],
   },
   {
@@ -157,7 +157,7 @@ export const seedDishes = [
     calories: 780,
     price: 18,
     heat: 61,
-    tags: ['米饭', '鸡肉', '外卖爆款'],
+    tags: ['米饭', '鸡肉', '外卖爆款', '外卖'],
     ingredients: ['鸡腿', '米饭', '西兰花', '胡萝卜'],
   },
   {
@@ -237,7 +237,7 @@ export const seedDishes = [
     calories: 680,
     price: 21,
     heat: 38,
-    tags: ['自选菜', '牛肉', '外卖爆款'],
+    tags: ['自选菜', '牛肉', '外卖爆款', '外卖'],
     ingredients: ['牛肉丸', '豆皮', '生菜', '粉条'],
   },
   {
@@ -247,7 +247,7 @@ export const seedDishes = [
     calories: 860,
     price: 24,
     heat: 44,
-    tags: ['校外', '牛肉', '外卖爆款'],
+    tags: ['校外', '外卖', '牛肉', '外卖爆款'],
     ingredients: ['牛肉饼', '面包', '生菜', '芝士'],
   },
   {
@@ -257,7 +257,7 @@ export const seedDishes = [
     calories: 890,
     price: 22,
     heat: 47,
-    tags: ['校外', '鸡肉', '夜宵'],
+    tags: ['校外', '外卖', '鸡肉', '夜宵'],
     ingredients: ['鸡腿', '面包', '生菜', '土豆'],
   },
   {
@@ -267,7 +267,7 @@ export const seedDishes = [
     calories: 430,
     price: 28,
     heat: 31,
-    tags: ['校外', '控卡减脂', '低脂'],
+    tags: ['校外', '外卖', '控卡减脂', '低脂'],
     ingredients: ['鸡胸肉', '生菜', '咖啡', '玉米'],
   },
 ]

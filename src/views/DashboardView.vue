@@ -72,11 +72,27 @@ const matchesSearch = (fields, query) => {
   return tokens.every((token) => haystack.includes(token))
 }
 
+const getMerchantDishes = (merchantId) => {
+  return dishes.value.filter((dish) => dish.merchant_id === merchantId)
+}
+
+const getMerchantTags = (merchant) => {
+  return [...new Set([...(merchant.scene_tags || []), ...(merchant.custom_tags || [])])]
+    .filter((tag) => tag && tag !== '??')
+}
+
+const getDishChips = (dish) => {
+  return [...new Set([...(dish.tags || []), ...(dish.ingredients || [])])]
+    .filter((tag) => tag && tag !== '??')
+    .slice(0, 7)
+}
+
 const heatMetric = (merchant) => {
-  const ratingScore = Number(merchant.rating || 0) * 18
-  const salesScore = Math.round(Number(merchant.monthly_sales || 0) / 55)
-  const tagScore = (merchant.custom_tags || []).length * 4
-  return Math.round(Number(merchant.heat || 0) + ratingScore + salesScore + tagScore)
+  const dishHeatScore = getMerchantDishes(merchant.id)
+    .reduce((sum, dish) => sum + Number(dish.heat || 0), 0)
+  const tagScore = getMerchantTags(merchant).length * 3
+
+  return Math.round(Number(merchant.heat || 0) + dishHeatScore * 0.28 + tagScore)
 }
 
 const filteredMerchants = computed(() => {
@@ -112,15 +128,11 @@ const dashboardTags = computed(() => {
   return [...new Set([...allSceneTags.value, ...allDishTags.value])].filter(Boolean)
 })
 
-const getMerchantDishes = (merchantId) => {
-  return dishes.value.filter((dish) => dish.merchant_id === merchantId)
-}
-
 const getVisibleMerchantDishes = (merchantId) => {
   const merchantDishes = getMerchantDishes(merchantId)
 
   if (!searchQuery.value) {
-    return merchantDishes.slice(0, 4)
+    return merchantDishes
   }
 
   const matchedDishes = merchantDishes.filter((dish) => {
@@ -131,22 +143,8 @@ const getVisibleMerchantDishes = (merchantId) => {
     ], searchQuery.value)
   })
 
-  return (matchedDishes.length ? matchedDishes : merchantDishes).slice(0, 4)
+  return matchedDishes.length ? matchedDishes : merchantDishes
 }
-
-const orderedMerchants = computed(() => {
-  const list = filteredMerchants.value
-  const selectedIndex = list.findIndex((merchant) => merchant.id === expandedMerchantId.value)
-
-  if (selectedIndex === -1) {
-    return list
-  }
-
-  const selectedMerchant = list[selectedIndex]
-  const remainingMerchants = list.filter((_, index) => index !== selectedIndex)
-
-  return [selectedMerchant, ...remainingMerchants]
-})
 
 watch(filteredMerchants, (list) => {
   if (
@@ -169,10 +167,10 @@ const toggleMerchant = (merchantId) => {
 <template>
   <section class="dashboard-page">
     <div class="section-heading">
-      <p class="section-heading__eyebrow">Meituan Nearby Board · 800m</p>
-      <h2>周边推荐看板</h2>
+      <p class="section-heading__eyebrow">Nearby Food · 800m</p>
+      <h2>校园周边美食</h2>
       <p>
-        以 {{ schoolMeta.address }} 为中心参考 {{ schoolMeta.radius }} 米范围，融合 Supabase 热度与美团登记榜单。
+        以 {{ schoolMeta.address }} 为中心参考 {{ schoolMeta.radius }} 米范围，按店铺热度、菜品热度和协同 Tag 综合排序。
       </p>
     </div>
 
@@ -183,7 +181,7 @@ const toggleMerchant = (merchantId) => {
         :disabled="isFetchingMeituan"
         @click="loadMeituanNearbyRanking"
       >
-        {{ isFetchingMeituan ? '拉取中...' : '拉取美团周边榜单' }}
+        {{ isFetchingMeituan ? '同步中...' : '同步周边商家' }}
       </button>
       <p>{{ meituanMessage }}</p>
     </div>
@@ -195,7 +193,7 @@ const toggleMerchant = (merchantId) => {
         type="search"
         placeholder="例如：牛肉、面食、轻食、秦味"
       />
-      <small>当前匹配 {{ orderedMerchants.length }} 家店铺</small>
+      <small>当前匹配 {{ filteredMerchants.length }} 家店铺</small>
     </label>
 
     <section class="filter-drawer" :class="{ 'filter-drawer--open': isFilterOpen }">
@@ -227,7 +225,7 @@ const toggleMerchant = (merchantId) => {
 
     <TransitionGroup tag="div" name="merchant-list" class="merchant-grid">
       <article
-        v-for="merchant in orderedMerchants"
+        v-for="merchant in filteredMerchants"
         :key="merchant.id"
         class="merchant-card"
         :class="{ 'merchant-card--expanded': isMerchantExpanded(merchant.id) }"
@@ -235,49 +233,68 @@ const toggleMerchant = (merchantId) => {
       >
         <div class="merchant-card__shell">
           <div class="merchant-card__topline">
-            <span>{{ merchant.source === 'meituan' ? 'MEITUAN' : 'CAMPUS' }}</span>
+            <span>{{ merchant.source === 'meituan' ? '校外' : '校园' }}</span>
             <small>{{ merchant.zone }}</small>
           </div>
 
           <h3>{{ merchant.name }}</h3>
           <p class="merchant-card__hint">
-            {{ isMerchantExpanded(merchant.id) ? '点击收起卡片' : '点击展开数据' }}
+            {{ isMerchantExpanded(merchant.id) ? '点击收起详情' : '点击查看菜品' }}
           </p>
 
           <transition name="card-detail">
             <div v-if="isMerchantExpanded(merchant.id)" class="merchant-card__details">
-              <strong>Heat Metric {{ heatMetric(merchant) }}</strong>
-
-              <dl class="merchant-card__stats">
+              <div class="merchant-card__summary">
                 <div>
-                  <dt>美团评分</dt>
-                  <dd>{{ merchant.rating }}</dd>
+                  <span>综合热度</span>
+                  <strong>{{ heatMetric(merchant) }}</strong>
                 </div>
                 <div>
-                  <dt>月售单量</dt>
-                  <dd>{{ merchant.monthly_sales }}</dd>
+                  <span>店内菜品</span>
+                  <strong>{{ getMerchantDishes(merchant.id).length }}</strong>
                 </div>
                 <div>
-                  <dt>协同热度</dt>
-                  <dd>{{ merchant.heat }}</dd>
+                  <span>协同热度</span>
+                  <strong>{{ merchant.heat || 0 }}</strong>
                 </div>
-              </dl>
+              </div>
 
               <div class="dish-preview">
-                <span>店内菜品</span>
-                <div>
-                  <small
+                <div class="dish-preview__head">
+                  <span>店家对应菜品</span>
+                  <small>点击“新增标签”可以继续补充菜品和 Tag</small>
+                </div>
+
+                <div v-if="getVisibleMerchantDishes(merchant.id).length" class="dish-list">
+                  <article
                     v-for="dish in getVisibleMerchantDishes(merchant.id)"
                     :key="dish.id"
+                    class="dish-card"
                   >
-                    {{ dish.name }}
-                  </small>
+                    <div>
+                      <strong>{{ dish.name }}</strong>
+                      <span>热度 {{ dish.heat || 0 }}</span>
+                    </div>
+
+                    <div class="dish-tags">
+                      <small
+                        v-for="tag in getDishChips(dish)"
+                        :key="`${dish.id}-${tag}`"
+                      >
+                        {{ tag }}
+                      </small>
+                    </div>
+                  </article>
                 </div>
+
+                <p v-else class="empty-dishes">
+                  这个店铺还没有录入菜品，可以去“新增标签”模块补充。
+                </p>
               </div>
 
               <div class="tag-row">
                 <span
-                  v-for="tag in [...(merchant.scene_tags || []), ...(merchant.custom_tags || [])]"
+                  v-for="tag in getMerchantTags(merchant)"
                   :key="`${merchant.id}-${tag}`"
                 >
                   {{ tag }}
@@ -294,7 +311,7 @@ const toggleMerchant = (merchantId) => {
 <style scoped>
 .dashboard-page {
   display: grid;
-  gap: 24px;
+  gap: 22px;
 }
 
 .section-heading {
@@ -312,8 +329,8 @@ const toggleMerchant = (merchantId) => {
 .section-heading h2 {
   margin: 0 0 10px;
   color: #111414;
-  font-size: clamp(34px, 5vw, 64px);
-  letter-spacing: -0.06em;
+  font-size: clamp(32px, 4.2vw, 54px);
+  letter-spacing: -0.04em;
 }
 
 .section-heading p,
@@ -334,10 +351,11 @@ const toggleMerchant = (merchantId) => {
   gap: 8px;
   padding: 16px;
   border: 1px solid #dde7df;
-  border-radius: 16px;
-  background: #f8fbf8;
+  border-radius: 14px;
+  background: #fff;
   color: #365847;
   font-weight: 900;
+  box-shadow: 0 10px 24px rgba(23, 49, 38, 0.05);
 }
 
 .search-box input {
@@ -380,8 +398,8 @@ const toggleMerchant = (merchantId) => {
 
 .filter-drawer {
   border: 1px solid #dde7df;
-  border-radius: 16px;
-  background: #f8fbf8;
+  border-radius: 14px;
+  background: #fff;
   overflow: hidden;
   transition: border-color 0.24s ease, box-shadow 0.24s ease;
 }
@@ -444,7 +462,7 @@ const toggleMerchant = (merchantId) => {
 
 .merchant-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   grid-auto-rows: minmax(188px, auto);
   gap: 16px;
   align-items: stretch;
@@ -452,33 +470,33 @@ const toggleMerchant = (merchantId) => {
 
 .merchant-card {
   min-height: 188px;
-  border: 1px solid #dbe8df;
-  border-radius: 18px;
-  background:
-    radial-gradient(circle at top right, rgba(17, 20, 20, 0.08), transparent 36%),
-    linear-gradient(145deg, #ffffff, #f4faf6);
+  border: 1px solid #dfe8e1;
+  border-radius: 14px;
+  background: #fff;
   text-align: left;
   cursor: pointer;
   overflow: hidden;
   will-change: min-height, transform, box-shadow;
   transition:
-    min-height 0.82s var(--ease-smooth),
-    transform 0.82s var(--ease-smooth),
+    min-height 0.92s var(--ease-smooth),
+    transform 0.32s ease,
     border-color 0.3s ease,
-    box-shadow 0.82s var(--ease-smooth),
+    box-shadow 0.92s var(--ease-smooth),
     background 0.3s ease;
+  box-shadow: 0 10px 26px rgba(23, 49, 38, 0.06);
 }
 
 .merchant-card:hover {
   transform: translateY(-2px);
+  box-shadow: 0 16px 34px rgba(23, 49, 38, 0.09);
 }
 
 .merchant-card--expanded {
   grid-column: 1 / -1;
-  min-height: 330px;
-  border-color: #111414;
-  box-shadow: 0 26px 55px rgba(17, 20, 20, 0.14);
-  transform: translateY(-4px) scale(1.01);
+  min-height: 390px;
+  border-color: rgba(45, 122, 87, 0.46);
+  box-shadow: 0 24px 55px rgba(23, 49, 38, 0.12);
+  transform: none;
 }
 
 .merchant-list-move {
@@ -489,9 +507,9 @@ const toggleMerchant = (merchantId) => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 22px;
-  transition: padding 0.68s var(--ease-smooth);
+  gap: 15px;
+  padding: 21px;
+  transition: padding 0.72s var(--ease-smooth);
 }
 
 .merchant-card--expanded .merchant-card__shell {
@@ -508,17 +526,21 @@ const toggleMerchant = (merchantId) => {
 }
 
 .merchant-card__topline span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #edf6f0;
   color: #2d7a57;
   font-weight: 900;
+  letter-spacing: 0;
 }
 
 .merchant-card h3 {
   max-width: 12em;
   margin: auto 0 0;
   color: #111414;
-  font-size: clamp(24px, 3vw, 38px);
-  line-height: 1.02;
-  letter-spacing: -0.05em;
+  font-size: clamp(23px, 2.6vw, 34px);
+  line-height: 1.08;
+  letter-spacing: -0.04em;
 }
 
 .merchant-card__hint {
@@ -529,64 +551,112 @@ const toggleMerchant = (merchantId) => {
 
 .merchant-card__details {
   display: grid;
-  gap: 16px;
+  gap: 18px;
   margin-top: 6px;
-  max-height: 260px;
+  max-height: 900px;
   overflow: hidden;
 }
 
-.merchant-card__details > strong {
-  color: #d94f30;
-  font-size: 20px;
-}
-
-.merchant-card__stats {
+.merchant-card__summary {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin: 0;
+  gap: 12px;
 }
 
-.merchant-card__stats div {
-  padding: 12px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.76);
+.merchant-card__summary div {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid #e5ede7;
+  border-radius: 12px;
+  background: #f8fbf8;
 }
 
-.merchant-card__stats dt {
+.merchant-card__summary span {
   color: #748278;
   font-size: 12px;
+  font-weight: 800;
 }
 
-.merchant-card__stats dd {
-  margin: 4px 0 0;
+.merchant-card__summary strong {
   color: #111414;
+  font-size: 24px;
   font-weight: 900;
 }
 
 .dish-preview {
   display: grid;
+  gap: 12px;
+}
+
+.dish-preview__head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
-.dish-preview > span {
+.dish-preview__head > span {
   color: #748278;
   font-size: 12px;
   font-weight: 900;
 }
 
-.dish-preview div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.dish-preview__head small,
+.empty-dishes {
+  color: #7a8580;
+  font-size: 13px;
 }
 
-.dish-preview small {
-  padding: 7px 10px;
+.dish-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.dish-card {
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid #e5ede7;
   border-radius: 12px;
-  background: #fff7e6;
+  background: #fffdf8;
+}
+
+.dish-card > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dish-card strong {
+  color: #173126;
+}
+
+.dish-card > div:first-child span {
+  flex: 0 0 auto;
+  color: #7a8580;
+  font-size: 12px;
+}
+
+.dish-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.dish-tags small {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #fff3df;
   color: #7a4b15;
   font-weight: 800;
+}
+
+.empty-dishes {
+  margin: 0;
 }
 
 .tag-row {
@@ -597,7 +667,7 @@ const toggleMerchant = (merchantId) => {
 
 .tag-row span {
   padding: 6px 9px;
-  border-radius: 12px;
+  border-radius: 999px;
   background: #edf6f0;
   color: #315c47;
   font-size: 13px;
@@ -607,15 +677,15 @@ const toggleMerchant = (merchantId) => {
 .card-detail-leave-active {
   transition:
     opacity 0.56s ease 0.12s,
-    transform 0.64s var(--ease-smooth) 0.08s,
-    max-height 0.72s var(--ease-smooth);
+    transform 0.7s var(--ease-smooth) 0.08s,
+    max-height 0.95s var(--ease-smooth);
 }
 
 .card-detail-leave-active {
   transition:
     opacity 0.34s ease,
-    transform 0.42s var(--ease-smooth),
-    max-height 0.62s var(--ease-smooth);
+    transform 0.5s var(--ease-smooth),
+    max-height 0.72s var(--ease-smooth);
 }
 
 .card-detail-enter-from,
@@ -627,7 +697,7 @@ const toggleMerchant = (merchantId) => {
 
 .card-detail-enter-to,
 .card-detail-leave-from {
-  max-height: 260px;
+  max-height: 900px;
 }
 
 @media (max-width: 760px) {
@@ -635,7 +705,7 @@ const toggleMerchant = (merchantId) => {
     grid-column: 1 / -1;
   }
 
-  .merchant-card__stats {
+  .merchant-card__summary {
     grid-template-columns: 1fr;
   }
 }

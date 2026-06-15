@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import AppModuleNav from './components/AppModuleNav.vue'
 import { useDiningStore } from './composables/useDiningStore'
 import DashboardView from './views/DashboardView.vue'
@@ -16,28 +16,29 @@ const {
 } = useDiningStore()
 
 const currentView = ref('home')
+const showBackToTop = ref(false)
 
 const entryModules = [
   {
     key: 'dashboard',
     title: '周边推荐',
-    caption: '看看都有啥吃的',
-    eyebrow: 'Whats Nearby ',
-    description: '商家总览和同学严选',
+    caption: '浏览店铺和菜品',
+    eyebrow: 'Nearby Choices',
+    description: '按热度、菜品和 Tag 快速找到附近可选项',
   },
   {
     key: 'wheel',
     title: '轮盘抽食',
-    caption: '随机看看',
+    caption: '按标签抽一个',
     eyebrow: 'Random Decision Wheel',
-    description: '适合选择困难症候群',
+    description: '把筛选条件交给轮盘，减少选择压力',
   },
   {
     key: 'manage',
-    title: '新增标签',
-    caption: '添加你觉得好吃的菜',
+    title: '新增店铺/菜品',
+    caption: '补充大家都能看到',
     eyebrow: 'Collaborative Tagging',
-    description: '添加成功所有人都能吃上',
+    description: '录入店铺、菜品和协同 Tag，同步给所有同学',
   },
 ]
 
@@ -60,8 +61,25 @@ const handleMenuChange = (nextView) => {
   currentView.value = nextView
 }
 
+const handleWindowScroll = () => {
+  showBackToTop.value = window.scrollY > 420
+}
+
+const scrollToTop = () => {
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth',
+  })
+}
+
 onMounted(() => {
   loadDiningData()
+  handleWindowScroll()
+  window.addEventListener('scroll', handleWindowScroll, { passive: true })
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', handleWindowScroll)
 })
 </script>
 
@@ -94,6 +112,16 @@ onMounted(() => {
         @choose-module="handleMenuChange"
       />
     </section>
+
+    <button
+      v-show="showBackToTop"
+      type="button"
+      class="back-to-top"
+      aria-label="回到页面顶部"
+      @click="scrollToTop"
+    >
+      ↑ 顶部
+    </button>
   </main>
 </template>
 
@@ -189,6 +217,29 @@ onMounted(() => {
   clip-path: none;
 }
 
+.back-to-top {
+  position: fixed;
+  right: max(20px, calc((100vw - 1180px) / 2 + 20px));
+  bottom: 24px;
+  z-index: 50;
+  border: 1px solid rgba(23, 49, 38, 0.16);
+  border-radius: 999px;
+  padding: 12px 16px;
+  background: rgba(17, 20, 20, 0.92);
+  color: #fff;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 16px 34px rgba(17, 20, 20, 0.18);
+  backdrop-filter: blur(18px);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, opacity 0.22s ease;
+}
+
+.back-to-top:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 42px rgba(17, 20, 20, 0.22);
+}
+
 @media (max-width: 720px) {
   .app-shell,
   .app-shell--home {
@@ -211,6 +262,12 @@ onMounted(() => {
 
   .view-panel--home {
     padding: 0;
+  }
+
+  .back-to-top {
+    right: 14px;
+    bottom: 14px;
+    padding: 10px 13px;
   }
 }
 </style>
