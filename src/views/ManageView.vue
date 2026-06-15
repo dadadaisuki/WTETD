@@ -454,8 +454,44 @@ const submitDish = () => {
 
 <style scoped>
 .manage-page {
+  position: relative;
   display: grid;
   gap: 24px;
+}
+
+.manage-page::before,
+.manage-page::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.manage-page::before {
+  top: 0.8rem;
+  right: 1.8rem;
+  width: 104px;
+  height: 104px;
+  border: var(--border-strong);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #151515 0 2px, transparent 2px) 0 0 / 15px 15px,
+    var(--lime);
+  box-shadow: var(--shadow-sticker);
+  animation: floatSticker 7s ease-in-out infinite;
+}
+
+.manage-page::after {
+  left: 1rem;
+  bottom: 12rem;
+  width: 108px;
+  height: 24px;
+  border: var(--border-strong);
+  border-radius: 999px;
+  background:
+    repeating-linear-gradient(90deg, #151515 0 8px, transparent 8px 18px),
+    var(--sky);
+  box-shadow: var(--shadow-sticker);
+  animation: wiggleLine 5.2s ease-in-out infinite;
 }
 
 .section-heading {
@@ -463,23 +499,32 @@ const submitDish = () => {
 }
 
 .section-heading__eyebrow {
-  margin: 0 0 8px;
-  color: #5d6a64;
+  display: inline-block;
+  margin: 0 0 14px;
+  padding: 8px 12px;
+  border: var(--border-strong);
+  border-radius: 999px;
+  background: var(--pink);
+  color: var(--ink);
   font-size: 13px;
+  font-weight: 900;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+  box-shadow: 4px 4px 0 #151515;
 }
 
 .section-heading h2 {
   margin: 0 0 10px;
-  color: #111414;
+  color: var(--ink);
   font-size: clamp(34px, 5vw, 64px);
   letter-spacing: -0.06em;
+  text-shadow: 3px 3px 0 var(--paper), 6px 6px 0 var(--sky);
 }
 
 .section-heading p {
   margin: 0;
-  color: #627267;
+  color: #3b3b3b;
+  font-weight: 700;
 }
 
 .manage-layout {
@@ -493,21 +538,54 @@ const submitDish = () => {
   display: grid;
   gap: 16px;
   padding: 22px;
-  border: 1px solid #dce9df;
-  border-radius: 16px;
-  background: #f8fbf8;
+  border: var(--border-strong);
+  border-radius: 28px;
+  background: var(--paper);
   text-align: left;
+  box-shadow: var(--shadow-sticker);
+  position: relative;
+  overflow: hidden;
+}
+
+.form-card::before {
+  content: "";
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 62px;
+  height: 62px;
+  border: var(--border-strong);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #151515 0 2px, transparent 2px) 0 0 / 12px 12px,
+    rgba(255, 255, 255, 0.74);
+  pointer-events: none;
+  animation: pulseDots 4.8s ease-in-out infinite;
+}
+
+.form-card:nth-child(1) {
+  background: #fff5fb;
+}
+
+.form-card:nth-child(2) {
+  background: #fffbe2;
+}
+
+.form-card:nth-child(3) {
+  background: #eefbff;
 }
 
 .form-card h3 {
   margin: 0;
-  color: #111414;
+  color: var(--ink);
+  font-size: 24px;
+  letter-spacing: -0.04em;
 }
 
 label {
   display: grid;
   gap: 8px;
-  color: #365847;
+  color: #313131;
   font-weight: 800;
 }
 
@@ -515,12 +593,13 @@ input,
 select {
   width: 100%;
   box-sizing: border-box;
-  border: 1px solid #cddbd1;
-  border-radius: 10px;
+  border: var(--border-strong);
+  border-radius: 16px;
   padding: 12px 13px;
   background: #fff;
-  color: #173126;
+  color: var(--ink);
   font: inherit;
+  box-shadow: 4px 4px 0 #151515;
 }
 
 .field-grid {
@@ -538,18 +617,27 @@ select {
 
 .inline-input button,
 .primary-button {
-  border: 0;
-  border-radius: 12px;
+  border: var(--border-strong);
+  border-radius: 18px;
   padding: 12px 16px;
-  background: #111414;
-  color: #fff;
+  background: var(--yellow);
+  color: var(--ink);
   font: inherit;
   font-weight: 900;
   cursor: pointer;
+  box-shadow: 4px 4px 0 #151515;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .primary-button {
   margin-top: 4px;
+}
+
+.inline-input button:hover,
+.primary-button:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 #151515;
+  background: var(--lime);
 }
 
 .tag-preview {
@@ -560,14 +648,15 @@ select {
 
 .tag-preview span,
 .tag-preview button {
-  border: 0;
-  border-radius: 12px;
+  border: var(--border-strong);
+  border-radius: 999px;
   padding: 7px 10px;
-  background: #eaf5ee;
-  color: #315c47;
+  background: #fff;
+  color: var(--ink);
   font: inherit;
   font-size: 13px;
   font-weight: 800;
+  box-shadow: 3px 3px 0 #151515;
 }
 
 .tag-preview button {
@@ -578,18 +667,21 @@ select {
   display: grid;
   gap: 10px;
   padding: 18px;
-  border-radius: 14px;
+  border: var(--border-strong);
+  border-radius: 20px;
   background: #fff;
+  box-shadow: 4px 4px 0 #151515;
 }
 
 .merchant-summary strong {
-  color: #173126;
+  color: var(--ink);
   font-size: 22px;
 }
 
 .merchant-summary p {
   margin: 0;
-  color: #60766b;
+  color: #3d3d3d;
+  font-weight: 700;
 }
 
 @media (max-width: 820px) {

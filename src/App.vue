@@ -85,6 +85,12 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="app-shell" :class="{ 'app-shell--home': currentView === 'home' }">
+    <div class="app-shell__decals" aria-hidden="true">
+      <span class="app-shell__decal app-shell__decal--circle"></span>
+      <span class="app-shell__decal app-shell__decal--square"></span>
+      <span class="app-shell__decal app-shell__decal--line"></span>
+    </div>
+
     <header class="topbar">
       <button type="button" class="brand-mark" @click="handleMenuChange('home')">
         WMDW
@@ -127,86 +133,193 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .app-shell {
+  position: relative;
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 28px 0 64px;
+  padding: 26px 0 70px;
 }
 
 .app-shell--home {
   width: min(1320px, calc(100% - 28px));
 }
 
+.app-shell__decals {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.app-shell__decal {
+  position: absolute;
+  border: var(--border-strong);
+  box-shadow: var(--shadow-sticker);
+}
+
+.app-shell__decal--circle {
+  top: 5.5rem;
+  right: 4%;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #151515 0 3px, transparent 3px) 0 0 / 18px 18px,
+    var(--lime);
+  animation: floatSticker 7s ease-in-out infinite;
+}
+
+.app-shell__decal--square {
+  top: 11.5rem;
+  left: -0.5rem;
+  width: 74px;
+  height: 74px;
+  border-radius: 20px;
+  background:
+    linear-gradient(135deg, transparent 0 38%, #151515 38% 42%, transparent 42% 58%, #151515 58% 62%, transparent 62%),
+    var(--pink);
+  transform: rotate(-14deg);
+  animation: driftTilt 8s ease-in-out infinite;
+}
+
+.app-shell__decal--line {
+  right: 18%;
+  bottom: 5rem;
+  width: 132px;
+  height: 24px;
+  border-radius: 999px;
+  background:
+    repeating-linear-gradient(90deg, #151515 0 8px, transparent 8px 18px),
+    var(--yellow);
+  animation: wiggleLine 5s ease-in-out infinite;
+}
+
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
+  gap: 18px;
+  margin-bottom: 20px;
 }
 
 .brand-mark {
-  width: 58px;
-  height: 42px;
-  border: 1px solid rgba(23, 49, 38, 0.18);
-  border-radius: var(--radius-md);
-  background: #101312;
-  color: #f7f5ef;
+  position: relative;
+  min-width: 92px;
+  height: 54px;
+  border: var(--border-strong);
+  border-radius: 18px;
+  background: var(--pink);
+  color: var(--ink);
   font-weight: 900;
+  font-size: 18px;
   letter-spacing: -0.08em;
   cursor: pointer;
-  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  box-shadow: var(--shadow-sticker);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
 }
 
 .brand-mark:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(17, 20, 20, 0.16);
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 #151515;
+  background: var(--yellow);
 }
 
 .sync-strip {
+  position: relative;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
   max-width: min(760px, 100%);
-  padding: 10px 12px;
-  border: 1px solid rgba(45, 122, 87, 0.18);
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.72);
-  color: #355c49;
+  padding: 13px 16px;
+  border: var(--border-strong);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle, #151515 0 2px, transparent 2px) 0 0 / 18px 18px,
+    var(--paper);
+  color: var(--ink);
   font-size: 14px;
-  backdrop-filter: blur(18px);
+  font-weight: 700;
+  box-shadow: var(--shadow-sticker);
 }
 
 .sync-strip__dot {
-  width: 10px;
-  height: 10px;
+  width: 14px;
+  height: 14px;
   border-radius: 999px;
-  background: #e2a23a;
-  box-shadow: 0 0 0 5px rgba(226, 162, 58, 0.12);
+  border: 2px solid #151515;
+  background: var(--orange);
+  box-shadow: 4px 4px 0 #151515;
 }
 
 .sync-strip__dot--live {
-  background: #2d7a57;
-  box-shadow: 0 0 0 5px rgba(45, 122, 87, 0.15);
+  background: var(--lime);
 }
 
 .sync-strip__button {
-  border: 0;
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  background: #173126;
-  color: #fff;
+  margin-left: auto;
+  border: var(--border-strong);
+  padding: 9px 14px;
+  border-radius: 16px;
+  background: var(--sky);
+  color: var(--ink);
   font: inherit;
+  font-weight: 900;
   cursor: pointer;
+  box-shadow: 4px 4px 0 #151515;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+}
+
+.sync-strip__button:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 6px 6px 0 #151515;
+  background: var(--yellow);
 }
 
 .view-panel {
+  position: relative;
   margin-top: 18px;
-  padding: 28px;
-  border: 1px solid #dde6df;
-  border-radius: var(--radius-lg);
-  background: #fff;
-  box-shadow: 0 14px 32px rgba(23, 49, 38, 0.06);
+  padding: 32px;
+  border: var(--border-strong);
+  border-radius: 34px;
+  background:
+    linear-gradient(0deg, transparent 0 23px, rgba(21, 21, 21, 0.1) 23px 24px, transparent 24px),
+    linear-gradient(90deg, transparent 0 23px, rgba(21, 21, 21, 0.1) 23px 24px, transparent 24px),
+    var(--paper);
+  background-size: 24px 24px, 24px 24px, auto;
+  box-shadow: var(--shadow-sticker-lg);
+  overflow: hidden;
+}
+
+.view-panel::before,
+.view-panel::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.view-panel::before {
+  top: 18px;
+  right: 22px;
+  width: 118px;
+  height: 18px;
+  border-radius: 999px;
+  background:
+    repeating-linear-gradient(90deg, #151515 0 7px, transparent 7px 16px),
+    var(--yellow);
+  border: var(--border-strong);
+  animation: wiggleLine 6s ease-in-out infinite;
+}
+
+.view-panel::after {
+  bottom: 18px;
+  left: 26px;
+  width: 92px;
+  height: 92px;
+  border: var(--border-strong);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #151515 0 2px, transparent 2px) 0 0 / 16px 16px,
+    var(--paper-alt);
+  animation: floatSticker 7s ease-in-out infinite;
 }
 
 .view-panel--home {
@@ -217,34 +330,40 @@ onBeforeUnmount(() => {
   clip-path: none;
 }
 
+.view-panel--home::before,
+.view-panel--home::after {
+  display: none;
+}
+
 .back-to-top {
   position: fixed;
   right: max(20px, calc((100vw - 1180px) / 2 + 20px));
   bottom: 24px;
   z-index: 50;
-  border: 1px solid rgba(23, 49, 38, 0.16);
+  border: var(--border-strong);
   border-radius: 999px;
-  padding: 12px 16px;
-  background: rgba(17, 20, 20, 0.92);
-  color: #fff;
+  padding: 12px 18px;
+  background:
+    linear-gradient(135deg, transparent 0 30%, rgba(21, 21, 21, 0.16) 30% 35%, transparent 35% 100%),
+    var(--yellow);
+  color: var(--ink);
   font: inherit;
   font-weight: 900;
   cursor: pointer;
-  box-shadow: 0 16px 34px rgba(17, 20, 20, 0.18);
-  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow-sticker);
   transition: transform 0.22s ease, box-shadow 0.22s ease, opacity 0.22s ease;
 }
 
 .back-to-top:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 20px 42px rgba(17, 20, 20, 0.22);
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 #151515;
 }
 
 @media (max-width: 720px) {
   .app-shell,
   .app-shell--home {
     width: min(100% - 18px, 1180px);
-    padding: 18px 0 40px;
+    padding: 18px 0 42px;
   }
 
   .topbar {
@@ -252,16 +371,26 @@ onBeforeUnmount(() => {
     flex-direction: column;
   }
 
+  .sync-strip {
+    max-width: none;
+  }
+
   .sync-strip__button {
     width: 100%;
+    margin-left: 0;
   }
 
   .view-panel {
-    padding: 18px;
+    padding: 20px;
   }
 
   .view-panel--home {
     padding: 0;
+  }
+
+  .app-shell__decal--circle,
+  .app-shell__decal--square {
+    display: none;
   }
 
   .back-to-top {

@@ -39,30 +39,50 @@ const changeMenu = (nextView) => {
 .module-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 18px;
+  gap: 14px;
+  margin-top: 20px;
 }
 
 .module-nav__button {
-  border: 1px solid #c8d8cc;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.78);
-  color: #234435;
-  padding: 11px 16px;
+  border: var(--border-strong);
+  border-radius: 18px;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 12px 18px;
   font: inherit;
+  font-weight: 900;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  box-shadow: 4px 4px 0 #151515;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.module-nav__button:nth-child(4n + 1) {
+  background: var(--sky);
+}
+
+.module-nav__button:nth-child(4n + 2) {
+  background: var(--yellow);
+}
+
+.module-nav__button:nth-child(4n + 3) {
+  background: var(--pink);
+}
+
+.module-nav__button:nth-child(4n + 4) {
+  background: var(--lime);
 }
 
 .module-nav__button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(31, 66, 50, 0.1);
+  transform: translate(-2px, -2px) rotate(-1deg);
+  box-shadow: 7px 7px 0 #151515;
 }
 
 .module-nav__button--active {
-  border-color: #111414;
-  background: #111414;
-  color: #fff;
+  background:
+    radial-gradient(circle, #151515 0 2px, transparent 2px) 0 0 / 16px 16px,
+    var(--orange);
+  transform: translate(-2px, -2px) rotate(-1deg);
+  box-shadow: 7px 7px 0 #151515;
 }
 
 @media (max-width: 640px) {

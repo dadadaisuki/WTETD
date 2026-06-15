@@ -23,16 +23,16 @@ const isSpinning = ref(false)
 const pointerResult = ref(null)
 
 const wheelColors = [
-  '#111414',
-  '#2d7a57',
-  '#d94f30',
-  '#f2a541',
-  '#2f6f9f',
-  '#77a464',
-  '#8f5f3f',
-  '#315c47',
-  '#c44536',
-  '#e5b567',
+  '#ff62b2',
+  '#ffe14d',
+  '#65d9ff',
+  '#b8ff3b',
+  '#ff9248',
+  '#fff7cf',
+  '#ff8bd0',
+  '#91ebff',
+  '#ffd54f',
+  '#dcff84',
 ]
 
 const normalizeDeg = (value) => {
@@ -220,7 +220,7 @@ watch(() => props.items, () => {
 .wheel-card {
   display: grid;
   place-items: center;
-  gap: 18px;
+  gap: 20px;
 }
 
 .wheel-stage {
@@ -231,23 +231,58 @@ watch(() => props.items, () => {
   place-items: center;
 }
 
+.wheel-stage::before,
+.wheel-stage::after {
+  content: "";
+  position: absolute;
+  border: var(--border-strong);
+  box-shadow: var(--shadow-sticker);
+  pointer-events: none;
+}
+
+.wheel-stage::before {
+  top: 2rem;
+  left: -1rem;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #151515 0 2px, transparent 2px) 0 0 / 14px 14px,
+    var(--yellow);
+  animation: floatSticker 7s ease-in-out infinite;
+}
+
+.wheel-stage::after {
+  right: -0.5rem;
+  bottom: 2rem;
+  width: 110px;
+  height: 22px;
+  border-radius: 999px;
+  background:
+    repeating-linear-gradient(90deg, #151515 0 8px, transparent 8px 17px),
+    var(--pink);
+  animation: wiggleLine 5.5s ease-in-out infinite;
+}
+
 .pointer-result {
   position: absolute;
   top: -30px;
   z-index: 4;
   min-width: min(320px, 78vw);
-  padding: 13px 18px;
-  border-radius: 14px;
-  background: rgba(17, 20, 20, 0.94);
-  color: #f7f5ef;
+  padding: 14px 18px;
+  border: var(--border-strong);
+  border-radius: 20px;
+  background: var(--paper);
+  color: var(--ink);
   text-align: center;
-  box-shadow: 0 18px 40px rgba(17, 20, 20, 0.22);
+  box-shadow: var(--shadow-sticker-lg);
 }
 
 .pointer-result span {
   display: block;
-  color: #8bd9bc;
+  color: var(--red);
   font-size: 12px;
+  font-weight: 900;
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }
@@ -260,7 +295,7 @@ watch(() => props.items, () => {
 }
 
 .pointer-result--loading strong {
-  color: #f2d28d;
+  color: var(--orange);
 }
 
 .wheel-pointer {
@@ -269,32 +304,41 @@ watch(() => props.items, () => {
   z-index: 3;
   width: 0;
   height: 0;
-  border-left: 19px solid transparent;
-  border-right: 19px solid transparent;
-  border-top: 42px solid #f7f5ef;
-  filter: drop-shadow(0 8px 12px rgba(17, 20, 20, 0.32));
+  border-left: 22px solid transparent;
+  border-right: 22px solid transparent;
+  border-top: 44px solid #151515;
+  filter: drop-shadow(0 7px 0 var(--yellow));
 }
 
 .wheel-disc {
   position: relative;
   width: 100%;
   height: 100%;
-  border: 14px solid #f7f5ef;
+  border: 12px solid #151515;
   border-radius: 50%;
-  box-shadow:
-    0 28px 70px rgba(17, 20, 20, 0.22),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  box-shadow: 10px 10px 0 #151515;
   display: grid;
   place-items: center;
   overflow: hidden;
   transition: transform 3.6s cubic-bezier(0.12, 0.74, 0.08, 1);
 }
 
+.wheel-disc::before {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(21, 21, 21, 0.18) 0 2px, transparent 2px) 0 0 / 18px 18px;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
 .wheel-disc::after {
   content: "";
   position: absolute;
   inset: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 3px dashed #151515;
   border-radius: 50%;
   pointer-events: none;
 }
@@ -306,14 +350,14 @@ watch(() => props.items, () => {
   z-index: 1;
   width: 104px;
   padding: 3px 6px;
+  border: 2px solid #151515;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.82);
+  color: #151515;
   font-size: 12px;
   font-weight: 900;
   text-align: center;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(5px);
+  box-shadow: 2px 2px 0 #151515;
 }
 
 .wheel-disc__center {
@@ -321,20 +365,20 @@ watch(() => props.items, () => {
   z-index: 2;
   width: 104px;
   height: 104px;
-  border: 1px solid rgba(17, 20, 20, 0.08);
+  border: var(--border-strong);
   border-radius: 50%;
-  background: #fffdf7;
-  color: #111414;
+  background:
+    radial-gradient(circle, #151515 0 2px, transparent 2px) 0 0 / 15px 15px,
+    var(--paper);
+  color: var(--ink);
   display: grid;
   place-items: center;
   align-content: center;
-  box-shadow:
-    0 18px 38px rgba(17, 20, 20, 0.18),
-    inset 0 0 0 8px rgba(17, 20, 20, 0.04);
+  box-shadow: 6px 6px 0 #151515;
 }
 
 .wheel-disc__center small {
-  color: #6a756f;
+  color: #3f3f3f;
   font-size: 12px;
   font-weight: 800;
 }
@@ -345,14 +389,22 @@ watch(() => props.items, () => {
 }
 
 .wheel-card__spin {
-  border: 0;
-  border-radius: 14px;
+  border: var(--border-strong);
+  border-radius: 18px;
   padding: 15px 30px;
-  background: #111414;
-  color: #fff;
+  background: var(--lime);
+  color: var(--ink);
   font: inherit;
   font-weight: 900;
   cursor: pointer;
+  box-shadow: var(--shadow-sticker);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+}
+
+.wheel-card__spin:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 #151515;
+  background: var(--yellow);
 }
 
 .wheel-card__spin:disabled {
@@ -363,8 +415,14 @@ watch(() => props.items, () => {
 .wheel-card__hint {
   max-width: 520px;
   margin: 0;
-  color: #63746a;
+  padding: 14px 16px;
+  border: var(--border-strong);
+  border-radius: 20px;
+  background: var(--paper);
+  color: #353535;
   text-align: center;
+  font-weight: 700;
+  box-shadow: var(--shadow-sticker);
 }
 
 .result-pop-enter-active,

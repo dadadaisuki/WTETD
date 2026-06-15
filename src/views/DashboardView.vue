@@ -310,33 +310,81 @@ const toggleMerchant = (merchantId) => {
 
 <style scoped>
 .dashboard-page {
+  position: relative;
   display: grid;
   gap: 22px;
+  padding-top: 4px;
+}
+
+.dashboard-page::before,
+.dashboard-page::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.dashboard-page::before {
+  top: 1.2rem;
+  right: 1.5rem;
+  width: 112px;
+  height: 112px;
+  border: var(--border-strong);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #151515 0 2px, transparent 2px) 0 0 / 16px 16px,
+    var(--sky);
+  box-shadow: var(--shadow-sticker);
+  animation: floatSticker 7s ease-in-out infinite;
+}
+
+.dashboard-page::after {
+  left: 1rem;
+  top: 11rem;
+  width: 126px;
+  height: 24px;
+  border: var(--border-strong);
+  border-radius: 999px;
+  background:
+    repeating-linear-gradient(90deg, #151515 0 8px, transparent 8px 18px),
+    var(--pink);
+  box-shadow: var(--shadow-sticker);
+  animation: wiggleLine 5s ease-in-out infinite;
 }
 
 .section-heading {
+  position: relative;
   text-align: left;
+  z-index: 1;
 }
 
 .section-heading__eyebrow {
-  margin: 0 0 8px;
-  color: #5d6a64;
+  display: inline-block;
+  margin: 0 0 14px;
+  padding: 8px 12px;
+  border: var(--border-strong);
+  border-radius: 999px;
+  background: var(--yellow);
+  color: var(--ink);
   font-size: 13px;
+  font-weight: 900;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+  box-shadow: 4px 4px 0 #151515;
 }
 
 .section-heading h2 {
   margin: 0 0 10px;
-  color: #111414;
-  font-size: clamp(32px, 4.2vw, 54px);
-  letter-spacing: -0.04em;
+  color: var(--ink);
+  font-size: clamp(34px, 4.4vw, 56px);
+  letter-spacing: -0.05em;
+  text-shadow: 3px 3px 0 var(--paper), 6px 6px 0 var(--lime);
 }
 
 .section-heading p,
 .toolbar p {
   margin: 0;
-  color: #627267;
+  color: #383838;
+  font-weight: 700;
 }
 
 .toolbar {
@@ -348,47 +396,58 @@ const toggleMerchant = (merchantId) => {
 
 .search-box {
   display: grid;
-  gap: 8px;
-  padding: 16px;
-  border: 1px solid #dde7df;
-  border-radius: 14px;
-  background: #fff;
-  color: #365847;
+  gap: 10px;
+  padding: 18px;
+  border: var(--border-strong);
+  border-radius: 24px;
+  background:
+    linear-gradient(135deg, transparent 0 34%, rgba(21, 21, 21, 0.1) 34% 38%, transparent 38% 100%),
+    var(--paper);
+  color: var(--ink);
   font-weight: 900;
-  box-shadow: 0 10px 24px rgba(23, 49, 38, 0.05);
+  box-shadow: var(--shadow-sticker);
 }
 
 .search-box input {
   width: 100%;
-  border: 1px solid #cddbd1;
-  border-radius: 10px;
-  padding: 12px 13px;
+  border: var(--border-strong);
+  border-radius: 16px;
+  padding: 13px 14px;
   background: #fff;
-  color: #173126;
+  color: var(--ink);
   font: inherit;
+  box-shadow: 4px 4px 0 #151515;
 }
 
 .search-box small {
-  color: #728077;
+  color: #404040;
   font-weight: 700;
 }
 
 .steel-button,
 .filter-drawer__trigger,
 .check-chip {
-  border: 1px solid #cddbd1;
-  border-radius: var(--radius-md);
+  border: var(--border-strong);
+  border-radius: 18px;
   background: #fff;
-  color: #173126;
+  color: var(--ink);
   font: inherit;
   cursor: pointer;
 }
 
 .steel-button {
-  padding: 12px 16px;
-  background: #111414;
-  color: #fff;
+  padding: 12px 18px;
+  background: var(--sky);
+  color: var(--ink);
   font-weight: 900;
+  box-shadow: 4px 4px 0 #151515;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+}
+
+.steel-button:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 #151515;
+  background: var(--yellow);
 }
 
 .steel-button:disabled {
@@ -397,16 +456,18 @@ const toggleMerchant = (merchantId) => {
 }
 
 .filter-drawer {
-  border: 1px solid #dde7df;
-  border-radius: 14px;
-  background: #fff;
+  border: var(--border-strong);
+  border-radius: 24px;
+  background: var(--paper-alt);
   overflow: hidden;
-  transition: border-color 0.24s ease, box-shadow 0.24s ease;
+  box-shadow: var(--shadow-sticker);
+  transition: transform 0.24s ease, box-shadow 0.24s ease, background 0.24s ease;
 }
 
 .filter-drawer--open {
-  border-color: rgba(45, 122, 87, 0.34);
-  box-shadow: 0 18px 36px rgba(23, 49, 38, 0.08);
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 #151515;
+  background: #fff8d9;
 }
 
 .filter-drawer__trigger {
@@ -422,7 +483,7 @@ const toggleMerchant = (merchantId) => {
 }
 
 .filter-drawer__trigger strong {
-  color: #2d7a57;
+  color: var(--red);
 }
 
 .filter-drawer__body {
@@ -436,28 +497,30 @@ const toggleMerchant = (merchantId) => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border-radius: 14px;
+  border-radius: 999px;
   padding: 10px 13px;
-  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  background: #fff;
+  box-shadow: 3px 3px 0 #151515;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .check-chip:hover {
-  transform: translateY(-1px);
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #151515;
 }
 
 .check-chip input {
-  accent-color: #111414;
+  accent-color: var(--ink);
 }
 
 .check-chip--active {
-  border-color: #111414;
-  background: #111414;
-  color: #fff;
+  background: var(--lime);
+  color: var(--ink);
 }
 
 .check-chip--reset {
-  color: #6d746f;
-  background: #eef3ef;
+  background: var(--pink);
+  color: var(--ink);
 }
 
 .merchant-grid {
@@ -469,10 +532,11 @@ const toggleMerchant = (merchantId) => {
 }
 
 .merchant-card {
+  position: relative;
   min-height: 188px;
-  border: 1px solid #dfe8e1;
-  border-radius: 14px;
-  background: #fff;
+  border: var(--border-strong);
+  border-radius: 24px;
+  background: var(--paper);
   text-align: left;
   cursor: pointer;
   overflow: hidden;
@@ -480,22 +544,73 @@ const toggleMerchant = (merchantId) => {
   transition:
     min-height 0.92s var(--ease-smooth),
     transform 0.32s ease,
-    border-color 0.3s ease,
     box-shadow 0.92s var(--ease-smooth),
     background 0.3s ease;
-  box-shadow: 0 10px 26px rgba(23, 49, 38, 0.06);
+  box-shadow: var(--shadow-sticker);
+}
+
+.merchant-card::before,
+.merchant-card::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.merchant-card::before {
+  top: 16px;
+  right: 16px;
+  width: 58px;
+  height: 58px;
+  border: var(--border-strong);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #151515 0 2px, transparent 2px) 0 0 / 12px 12px,
+    rgba(255, 255, 255, 0.7);
+  animation: pulseDots 4.6s ease-in-out infinite;
+}
+
+.merchant-card::after {
+  bottom: 16px;
+  left: 18px;
+  width: 92px;
+  height: 16px;
+  border-radius: 999px;
+  background:
+    repeating-linear-gradient(90deg, #151515 0 8px, transparent 8px 16px),
+    rgba(255, 255, 255, 0.72);
+  animation: wiggleLine 4.8s ease-in-out infinite;
+}
+
+.merchant-card:nth-child(4n + 1) {
+  background: #fff5fb;
+}
+
+.merchant-card:nth-child(4n + 2) {
+  background: #fffbe2;
+}
+
+.merchant-card:nth-child(4n + 3) {
+  background: #eefbff;
+}
+
+.merchant-card:nth-child(4n + 4) {
+  background: #f4ffe9;
 }
 
 .merchant-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 16px 34px rgba(23, 49, 38, 0.09);
+  transform: translate(-3px, -3px) rotate(-1deg);
+  box-shadow: 9px 9px 0 #151515;
 }
 
 .merchant-card--expanded {
   grid-column: 1 / -1;
-  min-height: 390px;
-  border-color: rgba(45, 122, 87, 0.46);
-  box-shadow: 0 24px 55px rgba(23, 49, 38, 0.12);
+  min-height: 410px;
+  background:
+    linear-gradient(0deg, transparent 0 19px, rgba(21, 21, 21, 0.08) 19px 20px, transparent 20px),
+    linear-gradient(90deg, transparent 0 19px, rgba(21, 21, 21, 0.08) 19px 20px, transparent 20px),
+    var(--paper);
+  background-size: 20px 20px, 20px 20px, auto;
+  box-shadow: 10px 10px 0 #151515;
   transform: none;
 }
 
@@ -508,7 +623,7 @@ const toggleMerchant = (merchantId) => {
   display: flex;
   flex-direction: column;
   gap: 15px;
-  padding: 21px;
+  padding: 22px;
   transition: padding 0.72s var(--ease-smooth);
 }
 
@@ -520,16 +635,17 @@ const toggleMerchant = (merchantId) => {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  color: #69746f;
+  color: #3e3e3e;
   font-size: 12px;
   letter-spacing: 0.1em;
 }
 
 .merchant-card__topline span {
-  padding: 4px 8px;
+  padding: 5px 9px;
   border-radius: 999px;
-  background: #edf6f0;
-  color: #2d7a57;
+  border: 2px solid #151515;
+  background: var(--yellow);
+  color: var(--ink);
   font-weight: 900;
   letter-spacing: 0;
 }
@@ -537,7 +653,7 @@ const toggleMerchant = (merchantId) => {
 .merchant-card h3 {
   max-width: 12em;
   margin: auto 0 0;
-  color: #111414;
+  color: var(--ink);
   font-size: clamp(23px, 2.6vw, 34px);
   line-height: 1.08;
   letter-spacing: -0.04em;
@@ -545,8 +661,9 @@ const toggleMerchant = (merchantId) => {
 
 .merchant-card__hint {
   margin: 0;
-  color: #7a8580;
+  color: #3b3b3b;
   font-size: 14px;
+  font-weight: 700;
 }
 
 .merchant-card__details {
@@ -567,19 +684,20 @@ const toggleMerchant = (merchantId) => {
   display: grid;
   gap: 6px;
   padding: 14px;
-  border: 1px solid #e5ede7;
-  border-radius: 12px;
-  background: #f8fbf8;
+  border: var(--border-strong);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 4px 4px 0 #151515;
 }
 
 .merchant-card__summary span {
-  color: #748278;
+  color: #444;
   font-size: 12px;
   font-weight: 800;
 }
 
 .merchant-card__summary strong {
-  color: #111414;
+  color: var(--ink);
   font-size: 24px;
   font-weight: 900;
 }
@@ -598,15 +716,16 @@ const toggleMerchant = (merchantId) => {
 }
 
 .dish-preview__head > span {
-  color: #748278;
+  color: #3f3f3f;
   font-size: 12px;
   font-weight: 900;
 }
 
 .dish-preview__head small,
 .empty-dishes {
-  color: #7a8580;
+  color: #4a4a4a;
   font-size: 13px;
+  font-weight: 700;
 }
 
 .dish-list {
@@ -619,9 +738,10 @@ const toggleMerchant = (merchantId) => {
   display: grid;
   gap: 10px;
   padding: 13px;
-  border: 1px solid #e5ede7;
-  border-radius: 12px;
-  background: #fffdf8;
+  border: var(--border-strong);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 4px 4px 0 #151515;
 }
 
 .dish-card > div:first-child {
@@ -632,13 +752,14 @@ const toggleMerchant = (merchantId) => {
 }
 
 .dish-card strong {
-  color: #173126;
+  color: var(--ink);
 }
 
 .dish-card > div:first-child span {
   flex: 0 0 auto;
-  color: #7a8580;
+  color: #474747;
   font-size: 12px;
+  font-weight: 700;
 }
 
 .dish-tags {
@@ -650,8 +771,9 @@ const toggleMerchant = (merchantId) => {
 .dish-tags small {
   padding: 6px 9px;
   border-radius: 999px;
-  background: #fff3df;
-  color: #7a4b15;
+  border: 2px solid #151515;
+  background: var(--yellow);
+  color: var(--ink);
   font-weight: 800;
 }
 
@@ -666,11 +788,13 @@ const toggleMerchant = (merchantId) => {
 }
 
 .tag-row span {
-  padding: 6px 9px;
+  padding: 7px 10px;
   border-radius: 999px;
-  background: #edf6f0;
-  color: #315c47;
+  border: 2px solid #151515;
+  background: var(--sky);
+  color: var(--ink);
   font-size: 13px;
+  font-weight: 800;
 }
 
 .card-detail-enter-active,

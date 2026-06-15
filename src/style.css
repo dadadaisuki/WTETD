@@ -1,16 +1,25 @@
 :root {
-  --page-bg: #f3f0e8;
-  --ink: #173126;
-  --muted: #64766b;
-  --line: #d9e4dc;
+  --page-bg: #fff4b8;
   --paper: #fffdf7;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 26px;
-  --ease-smooth: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --paper-alt: #fff0f7;
+  --ink: #151515;
+  --muted: #4a4a4a;
+  --pink: #ff62b2;
+  --yellow: #ffe14d;
+  --sky: #65d9ff;
+  --lime: #b8ff3b;
+  --orange: #ff9248;
+  --red: #ff5f4d;
+  --border-strong: 3px solid #151515;
+  --shadow-sticker: 6px 6px 0 #151515;
+  --shadow-sticker-lg: 10px 10px 0 #151515;
+  --radius-sm: 14px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
+  --radius-xl: 42px;
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
 
-  font: 16px/1.55 "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+  font: 16px/1.55 "Trebuchet MS", "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
   color: var(--ink);
   background: var(--page-bg);
   font-synthesis: none;
@@ -19,23 +28,80 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
+  position: relative;
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
+  overflow-x: hidden;
   background:
-    radial-gradient(circle at top left, rgba(45, 122, 87, 0.12), transparent 32rem),
-    radial-gradient(circle at bottom right, rgba(242, 165, 65, 0.16), transparent 28rem),
-    var(--page-bg);
+    radial-gradient(circle at 18% 16%, rgba(255, 98, 178, 0.18) 0 13%, transparent 13% 100%),
+    radial-gradient(circle at 86% 24%, rgba(101, 217, 255, 0.28) 0 12%, transparent 12% 100%),
+    radial-gradient(circle at 78% 78%, rgba(184, 255, 59, 0.26) 0 11%, transparent 11% 100%),
+    linear-gradient(180deg, #fff7c9 0%, #fff0cf 100%);
+}
+
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+}
+
+body::before {
+  top: -3rem;
+  left: -2rem;
+  width: 22rem;
+  height: 22rem;
+  border-radius: 44% 56% 58% 42%;
+  border: var(--border-strong);
+  background:
+    radial-gradient(circle, #151515 0 2px, transparent 2px) 0 0 / 16px 16px,
+    linear-gradient(135deg, transparent 0 36%, #65d9ff 36% 64%, transparent 64%),
+    linear-gradient(0deg, rgba(255, 98, 178, 0.9), rgba(255, 98, 178, 0.9));
+  box-shadow: var(--shadow-sticker-lg);
+  opacity: 0.95;
+  transform: rotate(-14deg);
+  animation: bobFloat 8s ease-in-out infinite;
+}
+
+body::after {
+  right: -5rem;
+  bottom: -2rem;
+  width: 24rem;
+  height: 18rem;
+  border: var(--border-strong);
+  border-radius: 38px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      #151515 0 6px,
+      transparent 6px 18px
+    ) 1rem 1.2rem / 8rem 0.75rem no-repeat,
+    linear-gradient(90deg, transparent 0 16%, #151515 16% 19%, transparent 19% 100%) 0 0 / 100% 100%,
+    linear-gradient(0deg, transparent 0 16%, #151515 16% 19%, transparent 19% 100%) 0 0 / 100% 100%,
+    linear-gradient(130deg, #ffe14d 0 34%, #ff9248 34% 66%, #65d9ff 66% 100%);
+  background-size: 7rem 0.9rem, 34px 34px, 34px 34px, auto;
+  box-shadow: var(--shadow-sticker-lg);
+  transform: rotate(10deg);
+  animation: driftTilt 10s ease-in-out infinite;
 }
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -43,6 +109,77 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
+input,
+select,
+textarea {
+  outline: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus-visible {
+  outline: 3px dashed #151515;
+  outline-offset: 3px;
+}
+
+::selection {
+  background: var(--sky);
+  color: var(--ink);
+}
+
 #app {
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
+}
+
+@keyframes bobFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-14deg);
+  }
+  50% {
+    transform: translate3d(12px, 18px, 0) rotate(-7deg);
+  }
+}
+
+@keyframes driftTilt {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(10deg);
+  }
+  50% {
+    transform: translate3d(-18px, -10px, 0) rotate(4deg);
+  }
+}
+
+@keyframes floatSticker {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(8px, -10px, 0) rotate(4deg);
+  }
+}
+
+@keyframes wiggleLine {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  50% {
+    transform: translateX(10px) rotate(-2deg);
+  }
+}
+
+@keyframes pulseDots {
+  0%,
+  100% {
+    background-position: 0 0, 0 0, 0 0;
+  }
+  50% {
+    background-position: 12px 8px, -10px 6px, 0 0;
+  }
 }
