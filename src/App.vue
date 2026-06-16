@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AppModuleNav from './components/AppModuleNav.vue'
 import { useDiningStore } from './composables/useDiningStore'
 import DashboardView from './views/DashboardView.vue'
@@ -8,9 +8,10 @@ import ManageView from './views/ManageView.vue'
 import WheelView from './views/WheelView.vue'
 
 const {
+  homeSnapshot,
   isCloudReady,
   isSyncing,
-  loadDiningData,
+  loadCatalog,
   refreshFromCloud,
   syncMessage,
 } = useDiningStore()
@@ -28,17 +29,17 @@ const entryModules = [
   },
   {
     key: 'wheel',
-    title: '轮盘抽食',
+    title: '转盘抽签',
     caption: '按标签抽一个',
     eyebrow: 'Random Decision Wheel',
     description: '把筛选条件交给轮盘，减少选择压力',
   },
   {
     key: 'manage',
-    title: '新增店铺/菜品',
-    caption: '补充大家都能看到',
+    title: '新增店铺 / 菜品',
+    caption: '补充大家都能看到的数据',
     eyebrow: 'Collaborative Tagging',
-    description: '录入店铺、菜品和协同 Tag，同步给所有同学',
+    description: '录入店铺、菜品和协同 Tag，并同步给所有同学',
   },
 ]
 
@@ -53,12 +54,20 @@ const currentViewComponent = computed(() => {
   return viewMap[currentView.value] ?? HomeView
 })
 
+const getScopeByView = (viewKey) => {
+  return viewKey === 'home' ? 'home' : viewKey
+}
+
 const handleMenuChange = (nextView) => {
   if (!viewMap[nextView]) {
     return
   }
 
   currentView.value = nextView
+}
+
+const ensureViewData = async (viewKey) => {
+  await loadCatalog(getScopeByView(viewKey))
 }
 
 const handleWindowScroll = () => {
@@ -73,9 +82,13 @@ const scrollToTop = () => {
 }
 
 onMounted(() => {
-  loadDiningData()
+  ensureViewData(currentView.value)
   handleWindowScroll()
   window.addEventListener('scroll', handleWindowScroll, { passive: true })
+})
+
+watch(currentView, (nextView) => {
+  ensureViewData(nextView)
 })
 
 onBeforeUnmount(() => {
@@ -93,14 +106,18 @@ onBeforeUnmount(() => {
 
     <header class="topbar">
       <button type="button" class="brand-mark" @click="handleMenuChange('home')">
-        主页
+        首页
       </button>
 
       <div class="sync-strip">
         <span class="sync-strip__dot" :class="{ 'sync-strip__dot--live': isCloudReady }"></span>
         <span>{{ isSyncing ? '同步中...' : syncMessage }}</span>
-        <button type="button" class="sync-strip__button" @click="refreshFromCloud">
-          拉取云端
+        <button
+          type="button"
+          class="sync-strip__button"
+          @click="refreshFromCloud(getScopeByView(currentView))"
+        >
+          刷新云端
         </button>
       </div>
     </header>
@@ -114,6 +131,7 @@ onBeforeUnmount(() => {
     <section class="view-panel" :class="{ 'view-panel--home': currentView === 'home' }">
       <component
         :is="currentViewComponent"
+        :home-snapshot="homeSnapshot"
         :modules="entryModules"
         @choose-module="handleMenuChange"
       />
@@ -126,7 +144,7 @@ onBeforeUnmount(() => {
       aria-label="回到页面顶部"
       @click="scrollToTop"
     >
-      ↑ 顶部
+      回到顶部
     </button>
   </main>
 </template>

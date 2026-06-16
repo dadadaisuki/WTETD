@@ -1,97 +1,85 @@
-const DEFAULT_SUPABASE_URL = 'https://pjgixbywuffzovsblyku.supabase.co/rest/v1'
+const API_BASE = '/api'
 
-const normalizeBaseUrl = (url) => {
-  return String(url || DEFAULT_SUPABASE_URL).replace(/\/$/, '')
+const request = async (path, options = {}) => {
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: {
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(options.headers || {}),
+    },
+  })
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || `API request failed: ${response.status}`)
+  }
+
+  if (response.status === 204) {
+    return null
+  }
+
+  return response.json()
+}
+
+const toPayload = (payload) => {
+  if (Array.isArray(payload)) {
+    return payload
+  }
+
+  return payload
 }
 
 export const createSupabaseGateway = () => {
-  const baseUrl = normalizeBaseUrl(import.meta.env.VITE_SUPABASE_URL)
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-  const isConfigured = Boolean(baseUrl && anonKey)
-
-  const headers = {
-    apikey: anonKey,
-    Authorization: `Bearer ${anonKey}`,
-    'Content-Type': 'application/json',
-  }
-
-  const request = async (path, options = {}) => {
-    if (!isConfigured) {
-      throw new Error('Supabase anon key is missing.')
-    }
-
-    const response = await fetch(`${baseUrl}${path}`, {
-      ...options,
-      headers: {
-        ...headers,
-        ...(options.headers || {}),
-      },
-    })
-
-    if (!response.ok) {
-      const message = await response.text()
-      throw new Error(message || `Supabase request failed: ${response.status}`)
-    }
-
-    if (response.status === 204) {
-      return null
-    }
-
-    return response.json()
-  }
-
   return {
-    baseUrl,
-    isConfigured,
+    baseUrl: API_BASE,
+    isConfigured: true,
+    getCatalog(scope) {
+      return request(`/catalogs/${scope}`)
+    },
     getMerchants() {
-      return request('/dining_merchants?select=*&order=heat.desc')
+      return request('/merchants').then((payload) => payload.items || [])
     },
     getDishes() {
-      return request('/dining_dishes?select=*&order=heat.desc')
+      return request('/dishes').then((payload) => payload.items || [])
     },
     upsertMerchant(merchant) {
-      return request('/dining_merchants?on_conflict=id', {
+      return request('/merchants', {
         method: 'POST',
-        headers: {
-          Prefer: 'resolution=merge-duplicates,return=representation',
-        },
-        body: JSON.stringify(merchant),
+        body: JSON.stringify(toPayload(merchant)),
       })
     },
     upsertMerchants(merchants) {
-      return request('/dining_merchants?on_conflict=id', {
+      return request('/merchants', {
         method: 'POST',
-        headers: {
-          Prefer: 'resolution=merge-duplicates,return=representation',
-        },
-        body: JSON.stringify(merchants),
+        body: JSON.stringify(toPayload(merchants)),
       })
     },
     upsertDish(dish) {
-      return request('/dining_dishes?on_conflict=id', {
+      return request('/dishes', {
         method: 'POST',
-        headers: {
-          Prefer: 'resolution=merge-duplicates,return=representation',
-        },
-        body: JSON.stringify(dish),
+        body: JSON.stringify(toPayload(dish)),
       })
     },
     patchMerchant(id, payload) {
-      return request(`/dining_merchants?id=eq.${encodeURIComponent(id)}`, {
+      return request(`/merchants/${encodeURIComponent(id)}`, {
         method: 'PATCH',
-        headers: {
-          Prefer: 'return=representation',
-        },
         body: JSON.stringify(payload),
       })
     },
     patchDish(id, payload) {
-      return request(`/dining_dishes?id=eq.${encodeURIComponent(id)}`, {
+      return request(`/dishes/${encodeURIComponent(id)}`, {
         method: 'PATCH',
-        headers: {
-          Prefer: 'return=representation',
-        },
         body: JSON.stringify(payload),
+      })
+    },
+    deleteMerchant(id) {
+      return request(`/merchants/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      })
+    },
+    deleteDish(id) {
+      return request(`/dishes/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
       })
     },
   }

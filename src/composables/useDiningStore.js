@@ -1,22 +1,32 @@
 import { computed, ref, watch } from 'vue'
 import { seedDishes, seedMerchants } from '../data/seedData'
-import { fetchMeituanNearbyRanking } from '../services/meituanGateway'
 import { createSupabaseGateway } from '../services/supabaseGateway'
 
-const STORAGE_KEY = 'wm-diet-wheel-data-v4'
+const STORAGE_KEY = 'wm-diet-wheel-data-v5'
 const gateway = createSupabaseGateway()
 
 const merchants = ref(seedMerchants.map((merchant) => ({ ...merchant })))
 const dishes = ref(seedDishes.map((dish) => ({ ...dish })))
-const isLoaded = ref(false)
+const homeSnapshot = ref({
+  counts: {
+    merchants: seedMerchants.length,
+    dishes: seedDishes.length,
+    campusMerchants: seedMerchants.filter((merchant) => merchant.source !== 'meituan').length,
+    takeoutMerchants: seedMerchants.filter((merchant) => merchant.source === 'meituan').length,
+  },
+  highlights: {
+    topTags: [],
+    updatedAt: null,
+  },
+})
+const loadedScopes = ref(new Set())
+const isBootstrapped = ref(false)
 const isSyncing = ref(false)
-const isFetchingMeituan = ref(false)
-const syncMessage = ref(gateway.isConfigured ? '云端待同步' : '本地模式：缺少 Supabase anon key')
-const meituanMessage = ref('。')
+const isCloudReady = ref(false)
+const syncMessage = ref('等待同步')
 const lastResult = ref(null)
 
 const safeClone = (value) => JSON.parse(JSON.stringify(value))
-
 const normalizeText = (value) => String(value || '').trim()
 
 const normalizeList = (list) => {
@@ -32,18 +42,12 @@ const retiredTestMerchantIds = new Set([
   'merchant-test-snack',
 ])
 
-const retiredTestDishNames = new Set(['验收牛肉拌饭'])
-const retiredTestMerchantNames = new Set(['验收测试店铺A'])
-
 const isRetiredTestMerchant = (merchant) => {
-  return retiredTestMerchantIds.has(merchant.id)
-    || retiredTestMerchantNames.has(merchant.name)
-    || merchant.source === 'test-poi'
+  return retiredTestMerchantIds.has(merchant.id) || merchant.source === 'test-poi'
 }
 
 const isRetiredTestDish = (dish, retiredMerchantIds = retiredTestMerchantIds) => {
   return String(dish.id || '').startsWith('dish-test-')
-    || retiredTestDishNames.has(dish.name)
     || retiredMerchantIds.has(dish.merchant_id)
 }
 
@@ -53,16 +57,13 @@ const sanitizeDiningData = (nextMerchants = [], nextDishes = []) => {
 
   return {
     merchants: visibleMerchants,
-    dishes: nextDishes.filter((dish) => (
-      visibleMerchantIds.has(dish.merchant_id)
-      && !isRetiredTestDish(dish)
-    )),
+    dishes: nextDishes.filter((dish) => {
+      return visibleMerchantIds.has(dish.merchant_id) && !isRetiredTestDish(dish)
+    }),
   }
 }
 
-const createId = (prefix) => {
-  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`
-}
+const createId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`
 
 const readLocalData = () => {
   if (typeof window === 'undefined') {
@@ -92,16 +93,55 @@ const writeLocalData = () => {
     JSON.stringify({
       merchants: safeClone(merchants.value),
       dishes: safeClone(dishes.value),
+      homeSnapshot: safeClone(homeSnapshot.value),
     }),
   )
 }
 
-watch([merchants, dishes], writeLocalData, { deep: true })
+watch([merchants, dishes, homeSnapshot], writeLocalData, { deep: true })
+
+const rebuildHomeSnapshot = () => {
+  const topTagScores = new Map()
+
+  merchants.value.forEach((merchant) => {
+    ;[...(merchant.scene_tags || []), ...(merchant.custom_tags || [])].forEach((tag) => {
+      topTagScores.set(tag, (topTagScores.get(tag) || 0) + 2)
+    })
+  })
+
+  dishes.value.forEach((dish) => {
+    ;[...(dish.tags || []), ...(dish.ingredients || [])].forEach((tag) => {
+      topTagScores.set(tag, (topTagScores.get(tag) || 0) + 1)
+    })
+  })
+
+  const timestamps = [
+    ...merchants.value.map((merchant) => merchant.updated_at),
+    ...dishes.value.map((dish) => dish.updated_at),
+  ].filter(Boolean).sort()
+
+  homeSnapshot.value = {
+    counts: {
+      merchants: merchants.value.length,
+      dishes: dishes.value.length,
+      campusMerchants: merchants.value.filter((merchant) => merchant.source !== 'meituan').length,
+      takeoutMerchants: merchants.value.filter((merchant) => merchant.source === 'meituan').length,
+    },
+    highlights: {
+      topTags: [...topTagScores.entries()]
+        .sort((left, right) => right[1] - left[1])
+        .slice(0, 6)
+        .map(([tag, score]) => ({ tag, score })),
+      updatedAt: timestamps.at(-1) || null,
+    },
+  }
+}
 
 const hydrateLocalData = () => {
   const cached = readLocalData()
 
   if (!cached) {
+    rebuildHomeSnapshot()
     return
   }
 
@@ -117,99 +157,111 @@ const hydrateLocalData = () => {
   if (sanitized.dishes.length > 0) {
     dishes.value = sanitized.dishes
   }
+
+  if (cached.homeSnapshot?.counts) {
+    homeSnapshot.value = cached.homeSnapshot
+  } else {
+    rebuildHomeSnapshot()
+  }
 }
 
-const queueSync = (label, task) => {
-  if (!gateway.isConfigured) {
-    syncMessage.value = `${label} 已保存到本地，等待配置 Supabase anon key`
+const ensureBootstrapped = () => {
+  if (isBootstrapped.value) {
     return
   }
 
-  isSyncing.value = true
-  syncMessage.value = `${label} 正在同步到云端...`
-
-  task()
-    .then(() => {
-      syncMessage.value = `${label} 已同步到 Supabase`
-      return refreshFromCloud()
-    })
-    .catch((error) => {
-      syncMessage.value = `${label} 云端同步失败，本地数据已保留`
-      console.error(error)
-    })
-    .finally(() => {
-      isSyncing.value = false
-    })
+  hydrateLocalData()
+  isBootstrapped.value = true
 }
 
-const mergeMerchants = (nextMerchants) => {
-  const current = new Map(merchants.value.map((merchant) => [merchant.id, merchant]))
-  const normalizedMerchants = nextMerchants.map((merchant) => {
-    const normalized = {
-      ...merchant,
-      source: merchant.source || 'meituan',
-      scene_tags: normalizeList([...(merchant.scene_tags || []), merchant.source === 'meituan' ? '校外' : '']),
-      custom_tags: normalizeList(merchant.custom_tags || []),
-      updated_at: new Date().toISOString(),
-    }
-
-    current.set(normalized.id, {
-      ...(current.get(normalized.id) || {}),
-      ...normalized,
-    })
-
-    return normalized
-  })
-
-  merchants.value = [...current.values()]
-  return normalizedMerchants
-}
-
-export const refreshFromCloud = async () => {
-  if (!gateway.isConfigured) {
-    syncMessage.value = '本地模式：请配置 VITE_SUPABASE_ANON_KEY 后连接云端'
-    return
+const applyCatalogPayload = (scope, payload) => {
+  if (typeof payload?.cloudReady === 'boolean') {
+    isCloudReady.value = payload.cloudReady
   }
 
-  isSyncing.value = true
-  syncMessage.value = '正在拉取全校协同数据...'
-
-  try {
-    const [cloudMerchants, cloudDishes] = await Promise.all([
-      gateway.getMerchants(),
-      gateway.getDishes(),
-    ])
-
+  if (payload?.merchants || payload?.dishes) {
     const sanitized = sanitizeDiningData(
-      Array.isArray(cloudMerchants) ? cloudMerchants : [],
-      Array.isArray(cloudDishes) ? cloudDishes : [],
+      Array.isArray(payload.merchants) ? payload.merchants : merchants.value,
+      Array.isArray(payload.dishes) ? payload.dishes : dishes.value,
     )
 
-    if (sanitized.merchants.length > 0) {
+    if (Array.isArray(payload.merchants)) {
       merchants.value = sanitized.merchants
     }
 
-    if (sanitized.dishes.length > 0) {
+    if (Array.isArray(payload.dishes)) {
       dishes.value = sanitized.dishes
     }
+  }
 
-    syncMessage.value = '已刷新标签与热度数据'
+  if (scope === 'home' && payload?.counts) {
+    homeSnapshot.value = {
+      counts: payload.counts,
+      highlights: payload.highlights || homeSnapshot.value.highlights,
+    }
+    return
+  }
+
+  rebuildHomeSnapshot()
+}
+
+const loadCatalog = async (scope, options = {}) => {
+  ensureBootstrapped()
+
+  if (!options.force && loadedScopes.value.has(scope)) {
+    return scope === 'home'
+      ? homeSnapshot.value
+      : {
+        merchants: merchants.value,
+        dishes: dishes.value,
+      }
+  }
+
+  try {
+    const payload = await gateway.getCatalog(scope)
+    applyCatalogPayload(scope, payload)
+    loadedScopes.value = new Set([...loadedScopes.value, scope])
+    syncMessage.value = scope === 'home' ? '首页摘要已更新' : '云端数据已刷新'
+    return payload
   } catch (error) {
     syncMessage.value = '云端拉取失败，当前使用本地缓存'
     console.error(error)
+    return scope === 'home'
+      ? homeSnapshot.value
+      : {
+        merchants: merchants.value,
+        dishes: dishes.value,
+      }
+  }
+}
+
+const refreshFromCloud = async (scope = 'dashboard') => {
+  isSyncing.value = true
+  syncMessage.value = '正在刷新云端数据...'
+
+  try {
+    return await loadCatalog(scope, { force: true })
   } finally {
     isSyncing.value = false
   }
 }
 
-export const loadDiningData = async () => {
-  if (isLoaded.value) {
-    return
-  }
+const queueSync = (label, task, refreshScopes = ['dashboard', 'wheel', 'manage', 'home']) => {
+  isSyncing.value = true
+  syncMessage.value = `${label} 正在同步到云端...`
 
-  hydrateLocalData()
-  isLoaded.value = true
-  await refreshFromCloud()
+  task()
+    .then(async () => {
+      syncMessage.value = `${label} 已同步到云端`
+      await Promise.all(refreshScopes.map((scope) => loadCatalog(scope, { force: true })))
+    })
+    .catch((error) => {
+      syncMessage.value = `${label} 同步失败，本地数据已保留`
+      console.error(error)
+    })
+    .finally(() => {
+      isSyncing.value = false
+    })
 }
 
 export const useDiningStore = () => {
@@ -238,6 +290,8 @@ export const useDiningStore = () => {
   }
 
   const addMerchant = (payload) => {
+    ensureBootstrapped()
+
     const merchant = {
       id: createId('merchant'),
       name: normalizeText(payload.name),
@@ -252,11 +306,18 @@ export const useDiningStore = () => {
     }
 
     merchants.value = [merchant, ...merchants.value]
-    queueSync('新增店铺', () => gateway.upsertMerchant(merchant))
+    rebuildHomeSnapshot()
+
+    queueSync('新增店铺', async () => {
+      await gateway.upsertMerchant(merchant)
+    })
+
     return merchant
   }
 
   const addDish = (payload) => {
+    ensureBootstrapped()
+
     const merchant = merchantById.value.get(payload.merchant_id)
     const merchantTags = [
       ...(merchant?.scene_tags || []),
@@ -283,11 +344,18 @@ export const useDiningStore = () => {
     }
 
     dishes.value = [dish, ...dishes.value]
-    queueSync('新增餐品', () => gateway.upsertDish(dish))
+    rebuildHomeSnapshot()
+
+    queueSync('新增菜品', async () => {
+      await gateway.upsertDish(dish)
+    })
+
     return dish
   }
 
   const updateMerchantTags = (merchantId, nextTags) => {
+    ensureBootstrapped()
+
     const nextCustomTags = normalizeList(nextTags)
     const updatedAt = new Date().toISOString()
     const merchant = merchants.value.find((item) => item.id === merchantId)
@@ -308,12 +376,14 @@ export const useDiningStore = () => {
       }
     })
 
-    queueSync('协同标签', () =>
-      gateway.patchMerchant(merchantId, {
+    rebuildHomeSnapshot()
+
+    queueSync('协同标签', async () => {
+      await gateway.patchMerchant(merchantId, {
         custom_tags: nextCustomTags,
         updated_at: updatedAt,
-      }),
-    )
+      })
+    })
 
     return {
       ...merchant,
@@ -324,6 +394,7 @@ export const useDiningStore = () => {
 
   const addMerchantTag = (merchantId, tag) => {
     const merchant = merchantById.value.get(merchantId)
+
     if (!merchant) {
       return null
     }
@@ -332,6 +403,8 @@ export const useDiningStore = () => {
   }
 
   const incrementDishHeat = (dishId) => {
+    ensureBootstrapped()
+
     const updatedAt = new Date().toISOString()
     let updatedDish = null
     let updatedMerchant = null
@@ -368,7 +441,9 @@ export const useDiningStore = () => {
       return updatedMerchant
     })
 
-    queueSync('轮盘热度', async () => {
+    rebuildHomeSnapshot()
+
+    queueSync('转盘热度', async () => {
       await gateway.patchDish(updatedDish.id, {
         heat: updatedDish.heat,
         updated_at: updatedDish.updated_at,
@@ -385,46 +460,27 @@ export const useDiningStore = () => {
     return updatedDish
   }
 
-  const loadMeituanNearbyRanking = async () => {
-    isFetchingMeituan.value = true
-    meituanMessage.value = ''
-
-    try {
-      const result = await fetchMeituanNearbyRanking()
-      const merged = mergeMerchants(result.merchants)
-      meituanMessage.value = result.message
-
-      queueSync('周边登记商家', () => gateway.upsertMerchants(merged))
-    } catch (error) {
-      meituanMessage.value = '周边餐饮数据拉取失败，请检查接口地址、鉴权或浏览器跨域限制。'
-      console.error(error)
-    } finally {
-      isFetchingMeituan.value = false
-    }
-  }
-
   return {
     merchants,
     dishes,
-    isLoaded,
+    homeSnapshot,
+    isLoaded: computed(() => loadedScopes.value.size > 0),
     isSyncing,
-    isFetchingMeituan,
+    isCloudReady: computed(() => isCloudReady.value),
     syncMessage,
-    meituanMessage,
-    isCloudReady: computed(() => gateway.isConfigured),
     lastResult,
     allSceneTags,
     allDishTags,
     allIngredients,
     getMerchant,
     getMerchantName,
-    loadDiningData,
+    loadCatalog,
+    loadDiningData: () => loadCatalog('dashboard'),
     refreshFromCloud,
     addMerchant,
     addDish,
     addMerchantTag,
     incrementDishHeat,
     updateMerchantTags,
-    loadMeituanNearbyRanking,
   }
 }

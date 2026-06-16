@@ -2,6 +2,16 @@
 import { computed, ref } from 'vue'
 
 const props = defineProps({
+  homeSnapshot: {
+    type: Object,
+    default: () => ({
+      counts: {},
+      highlights: {
+        topTags: [],
+        updatedAt: null,
+      },
+    }),
+  },
   modules: {
     type: Array,
     required: true,
@@ -14,6 +24,33 @@ const activeKey = ref(props.modules[0]?.key || 'dashboard')
 
 const activeModule = computed(() => {
   return props.modules.find((module) => module.key === activeKey.value) || props.modules[0]
+})
+
+const summaryCards = computed(() => {
+  const counts = props.homeSnapshot?.counts || {}
+
+  return [
+    {
+      key: 'merchant-count',
+      label: '店铺总数',
+      value: counts.merchants || 0,
+    },
+    {
+      key: 'dish-count',
+      label: '菜品总数',
+      value: counts.dishes || 0,
+    },
+    {
+      key: 'campus-count',
+      label: '校园内店铺',
+      value: counts.campusMerchants || 0,
+    },
+    {
+      key: 'takeout-count',
+      label: '校外 / 外卖',
+      value: counts.takeoutMerchants || 0,
+    },
+  ]
 })
 
 const chooseModule = (key) => {
@@ -34,7 +71,7 @@ const chooseModule = (key) => {
       <p class="hero-copy__overline">Campus Food Decision System</p>
       <h1 class="hero-copy__title">今天吃什么</h1>
       <p class="hero-copy__subtitle">
-        先选一个入口：看周边、转轮盘，或者把你发现的好店补充进去。
+        先选一个入口：看周边、转转盘，或者把你发现的好店补充进去。
       </p>
     </div>
 
@@ -56,11 +93,30 @@ const chooseModule = (key) => {
       </button>
     </div>
 
+    <div class="summary-grid">
+      <article
+        v-for="card in summaryCards"
+        :key="card.key"
+        class="summary-card"
+      >
+        <span>{{ card.label }}</span>
+        <strong>{{ card.value }}</strong>
+      </article>
+    </div>
+
     <transition name="spec-panel" mode="out-in">
       <aside v-if="activeModule" :key="activeModule.key" class="module-spec">
         <span>{{ activeModule.eyebrow }}</span>
         <h2>{{ activeModule.title }}</h2>
         <p>{{ activeModule.description }}</p>
+        <div v-if="props.homeSnapshot?.highlights?.topTags?.length" class="module-spec__tags">
+          <small
+            v-for="item in props.homeSnapshot.highlights.topTags"
+            :key="item.tag"
+          >
+            {{ item.tag }} · {{ item.score }}
+          </small>
+        </div>
       </aside>
     </transition>
   </section>
@@ -71,7 +127,7 @@ const chooseModule = (key) => {
   position: relative;
   min-height: min(760px, calc(100vh - 110px));
   display: grid;
-  grid-template-rows: 1fr auto auto;
+  grid-template-rows: 1fr auto auto auto;
   gap: 30px;
   overflow: hidden;
   padding: clamp(42px, 8vw, 92px);
@@ -326,6 +382,34 @@ const chooseModule = (key) => {
   font-weight: 700;
 }
 
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.summary-card {
+  display: grid;
+  gap: 8px;
+  padding: 18px 20px;
+  border: var(--border-strong);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: var(--shadow-sticker);
+}
+
+.summary-card span {
+  color: #404040;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.summary-card strong {
+  color: var(--ink);
+  font-size: clamp(26px, 3vw, 38px);
+  line-height: 1;
+}
+
 .module-spec {
   position: relative;
   max-width: 760px;
@@ -364,6 +448,23 @@ const chooseModule = (key) => {
   margin: 0;
   color: #363636;
   font-weight: 700;
+}
+
+.module-spec__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.module-spec__tags small {
+  padding: 6px 10px;
+  border: var(--border-strong);
+  border-radius: 999px;
+  background: var(--yellow);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .spec-panel-enter-active,
@@ -417,7 +518,8 @@ const chooseModule = (key) => {
     display: none;
   }
 
-  .launch-grid {
+  .launch-grid,
+  .summary-grid {
     grid-template-columns: 1fr;
   }
 }

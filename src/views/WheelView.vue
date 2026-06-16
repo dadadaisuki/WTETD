@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import TagWheel from '../components/TagWheel.vue'
 import { useDiningStore } from '../composables/useDiningStore'
 
@@ -30,6 +30,7 @@ const {
   getMerchantName,
   incrementDishHeat,
   lastResult,
+  loadCatalog,
 } = useDiningStore()
 
 const savedPreferences = readWheelPreferences()
@@ -241,6 +242,10 @@ const confirmResult = () => {
 onBeforeUnmount(() => {
   window.clearInterval(cooldownCountdownTimer)
   window.clearTimeout(cooldownReleaseTimer)
+})
+
+onMounted(() => {
+  loadCatalog('wheel')
 })
 </script>
 

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import FeedbackBar from '../components/FeedbackBar.vue'
 import { useDiningStore } from '../composables/useDiningStore'
 
@@ -8,6 +8,7 @@ const {
   addMerchant,
   addMerchantTag,
   getMerchantName,
+  loadCatalog,
   merchants,
   syncMessage,
 } = useDiningStore()
@@ -270,6 +271,10 @@ const submitDish = () => {
   form.ingredients = []
   formFeedback.value = { type: 'success', message: `已录入餐品：${dish.name}` }
 }
+
+onMounted(() => {
+  loadCatalog('manage')
+})
 </script>
 
 <template>

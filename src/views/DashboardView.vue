@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useDiningStore } from '../composables/useDiningStore'
 import { getSchoolSearchMeta } from '../services/meituanGateway'
 
@@ -22,6 +22,7 @@ const {
   allDishTags,
   allSceneTags,
   dishes,
+  loadCatalog,
   merchants,
 } = useDiningStore()
 
@@ -181,6 +182,10 @@ const isMerchantExpanded = (merchantId) => {
 const toggleMerchant = (merchantId) => {
   expandedMerchantId.value = expandedMerchantId.value === merchantId ? '' : merchantId
 }
+
+onMounted(() => {
+  loadCatalog('dashboard')
+})
 </script>
 
 <template>
