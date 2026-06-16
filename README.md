@@ -1,5 +1,24 @@
-# Vue 3 + Vite
+# wm-diet-wheel
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Vue 3 + Vite 校园饮食大转盘项目。
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+## 目录
+
+- `src/`：前端页面、组件、状态与服务
+- `server/`：本地 API 与 Supabase 仓库适配
+- `netlify/`：Netlify Functions
+- `docs/`：项目文档
+- `public/`：静态资源
+
+## 运行
+
+```bash
+npm install
+npm run dev
+```
+
+## 构建
+
+```bash
+npm run build
+```

@@ -28,6 +28,7 @@ const lastResult = ref(null)
 
 const safeClone = (value) => JSON.parse(JSON.stringify(value))
 const normalizeText = (value) => String(value || '').trim()
+const normalizeCompareText = (value) => normalizeText(value).toLowerCase()
 
 const normalizeList = (list) => {
   return [...new Set((list || [])
@@ -292,9 +293,18 @@ export const useDiningStore = () => {
   const addMerchant = (payload) => {
     ensureBootstrapped()
 
+    const merchantName = normalizeText(payload.name)
+    const hasDuplicateMerchant = merchants.value.some((merchant) => {
+      return normalizeCompareText(merchant.name) === normalizeCompareText(merchantName)
+    })
+
+    if (hasDuplicateMerchant) {
+      throw new Error('该店铺已存在，请勿重复添加。')
+    }
+
     const merchant = {
       id: createId('merchant'),
-      name: normalizeText(payload.name),
+      name: merchantName,
       zone: normalizeText(payload.zone) || '自定义店铺',
       source: payload.source || 'manual',
       rating: Number(payload.rating) || 4.5,
@@ -319,6 +329,21 @@ export const useDiningStore = () => {
     ensureBootstrapped()
 
     const merchant = merchantById.value.get(payload.merchant_id)
+    const dishName = normalizeText(payload.name)
+
+    if (!merchant) {
+      throw new Error('所选店铺不存在，请重新选择后再试。')
+    }
+
+    const hasDuplicateDish = dishes.value.some((dish) => {
+      return dish.merchant_id === payload.merchant_id
+        && normalizeCompareText(dish.name) === normalizeCompareText(dishName)
+    })
+
+    if (hasDuplicateDish) {
+      throw new Error('该店铺下已存在同名菜品，请勿重复添加。')
+    }
+
     const merchantTags = [
       ...(merchant?.scene_tags || []),
       ...(merchant?.custom_tags || []),
@@ -334,7 +359,7 @@ export const useDiningStore = () => {
     const dish = {
       id: createId('dish'),
       merchant_id: payload.merchant_id,
-      name: normalizeText(payload.name),
+      name: dishName,
       calories: Number(payload.calories) || 0,
       price: Number(payload.price) || 0,
       heat: 1,

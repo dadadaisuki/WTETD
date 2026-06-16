@@ -7,6 +7,7 @@ const {
   addDish,
   addMerchant,
   addMerchantTag,
+  dishes,
   getMerchantName,
   loadCatalog,
   merchants,
@@ -76,6 +77,21 @@ const validateTag = (value, existingList = []) => {
   }
 
   return { ok: true, tag }
+}
+
+const normalizeCompareText = (value) => String(value || '').trim().toLowerCase()
+
+const hasDuplicateMerchantName = (name) => {
+  return merchants.value.some((merchant) => {
+    return normalizeCompareText(merchant.name) === normalizeCompareText(name)
+  })
+}
+
+const hasDuplicateDishNameInMerchant = (merchantId, name) => {
+  return dishes.value.some((dish) => {
+    return dish.merchant_id === merchantId
+      && normalizeCompareText(dish.name) === normalizeCompareText(name)
+  })
 }
 
 const addMerchantSceneTag = () => {
@@ -171,6 +187,10 @@ const validateMerchantForm = () => {
     return '店铺名称过长，请控制在 20 个字符以内。'
   }
 
+  if (hasDuplicateMerchantName(name)) {
+    return '该店铺已存在，请勿重复添加。'
+  }
+
   if (zone.length > 28) {
     return '店铺位置说明过长，请控制在 28 个字符以内。'
   }
@@ -189,24 +209,31 @@ const submitMerchant = () => {
     return
   }
 
-  const merchant = addMerchant({
-    name: merchantForm.name,
-    zone: merchantForm.zone || '手动新增店铺',
-    scene_tags: merchantForm.sceneTags,
-    custom_tags: merchantForm.customTags,
-  })
+  try {
+    const merchant = addMerchant({
+      name: merchantForm.name,
+      zone: merchantForm.zone || '手动新增店铺',
+      scene_tags: merchantForm.sceneTags,
+      custom_tags: merchantForm.customTags,
+    })
 
-  merchantForm.name = ''
-  merchantForm.zone = ''
-  merchantForm.sceneTagInput = ''
-  merchantForm.customTagInput = ''
-  merchantForm.sceneTags = ['校外']
-  merchantForm.customTags = []
-  form.merchantId = merchant.id
-  activeMerchantId.value = merchant.id
-  merchantCreateFeedback.value = {
-    type: 'success',
-    message: `已新增店铺：${merchant.name}。现在可以继续为它添加菜品。`,
+    merchantForm.name = ''
+    merchantForm.zone = ''
+    merchantForm.sceneTagInput = ''
+    merchantForm.customTagInput = ''
+    merchantForm.sceneTags = ['校外']
+    merchantForm.customTags = []
+    form.merchantId = merchant.id
+    activeMerchantId.value = merchant.id
+    merchantCreateFeedback.value = {
+      type: 'success',
+      message: `已新增店铺：${merchant.name}。现在可以继续为它添加菜品。`,
+    }
+  } catch (submitError) {
+    merchantCreateFeedback.value = {
+      type: 'error',
+      message: submitError instanceof Error ? submitError.message : '新增店铺失败，请稍后重试。',
+    }
   }
 }
 
@@ -225,6 +252,10 @@ const validateForm = () => {
 
   if (!form.merchantId) {
     return '请选择餐品所属档口。'
+  }
+
+  if (hasDuplicateDishNameInMerchant(form.merchantId, name)) {
+    return '该店铺下已存在同名菜品，请勿重复添加。'
   }
 
   if (!Number.isFinite(calories) || calories <= 0 || calories > 2500) {
@@ -253,23 +284,30 @@ const submitDish = () => {
     return
   }
 
-  const dish = addDish({
-    merchant_id: form.merchantId,
-    name: form.name,
-    calories: form.calories,
-    price: form.price,
-    tags: form.tags,
-    ingredients: form.ingredients,
-  })
+  try {
+    const dish = addDish({
+      merchant_id: form.merchantId,
+      name: form.name,
+      calories: form.calories,
+      price: form.price,
+      tags: form.tags,
+      ingredients: form.ingredients,
+    })
 
-  form.name = ''
-  form.calories = ''
-  form.price = ''
-  form.tagInput = ''
-  form.ingredientInput = ''
-  form.tags = []
-  form.ingredients = []
-  formFeedback.value = { type: 'success', message: `已录入餐品：${dish.name}` }
+    form.name = ''
+    form.calories = ''
+    form.price = ''
+    form.tagInput = ''
+    form.ingredientInput = ''
+    form.tags = []
+    form.ingredients = []
+    formFeedback.value = { type: 'success', message: `已录入餐品：${dish.name}` }
+  } catch (submitError) {
+    formFeedback.value = {
+      type: 'error',
+      message: submitError instanceof Error ? submitError.message : '新增菜品失败，请稍后重试。',
+    }
+  }
 }
 
 onMounted(() => {
