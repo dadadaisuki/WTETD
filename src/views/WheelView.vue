@@ -5,6 +5,7 @@ import { useDiningStore } from '../composables/useDiningStore'
 
 const WHEEL_PREF_KEY = 'wm-diet-wheel-wheel-preferences-v1'
 const COOLDOWN_SECONDS = 10
+const PINNED_TAGS = ['外卖', '食堂', '校外']
 
 const readWheelPreferences = () => {
   if (typeof window === 'undefined') {
@@ -46,6 +47,29 @@ const cooldownLocked = ref(false)
 const cooldownSeconds = ref(0)
 let cooldownCountdownTimer = 0
 let cooldownReleaseTimer = 0
+
+const sortTagsWithPriority = (list) => {
+  return [...new Set((list || []).filter(Boolean))].sort((left, right) => {
+    const leftPriority = PINNED_TAGS.indexOf(left)
+    const rightPriority = PINNED_TAGS.indexOf(right)
+
+    if (leftPriority !== -1 || rightPriority !== -1) {
+      if (leftPriority === -1) {
+        return 1
+      }
+
+      if (rightPriority === -1) {
+        return -1
+      }
+
+      return leftPriority - rightPriority
+    }
+
+    return String(left).localeCompare(String(right), 'zh-Hans-CN')
+  })
+}
+
+const sortedDishTags = computed(() => sortTagsWithPriority(allDishTags.value))
 
 const buildHistoryKey = (tags, ingredients) => {
   return [
@@ -281,7 +305,7 @@ onMounted(() => {
         </button>
         <div v-show="openedDrawer === 'tags'" class="drawer-body">
           <label
-            v-for="tag in allDishTags"
+            v-for="tag in sortedDishTags"
             :key="tag"
             class="check-chip"
             :class="{ 'check-chip--active': selectedTags.includes(tag) }"

@@ -5,14 +5,125 @@ import { createSupabaseGateway } from '../services/supabaseGateway'
 const STORAGE_KEY = 'wm-diet-wheel-data-v5'
 const gateway = createSupabaseGateway()
 
-const merchants = ref(seedMerchants.map((merchant) => ({ ...merchant })))
-const dishes = ref(seedDishes.map((dish) => ({ ...dish })))
+const TAG_PRIORITY = ['外卖', '食堂', '校外']
+
+const normalizeList = (list) => {
+  return [...new Set((list || [])
+    .map((value) => String(value || '').trim())
+    .filter((item) => item && item !== '??'))]
+}
+
+const sortTagsWithPriority = (list) => {
+  return normalizeList(list).sort((left, right) => {
+    const leftPriority = TAG_PRIORITY.indexOf(left)
+    const rightPriority = TAG_PRIORITY.indexOf(right)
+
+    if (leftPriority !== -1 || rightPriority !== -1) {
+      if (leftPriority === -1) {
+        return 1
+      }
+
+      if (rightPriority === -1) {
+        return -1
+      }
+
+      return leftPriority - rightPriority
+    }
+
+    return left.localeCompare(right, 'zh-Hans-CN')
+  })
+}
+
+const decorateMerchantTags = (merchant) => {
+  const isTakeawayZone = String(merchant.zone || '').includes('外卖')
+  const isTakeawaySource = merchant.source === 'meituan'
+  const isTakeawayName = String(merchant.name || '').includes('外卖')
+  const sceneTags = normalizeList(merchant.scene_tags)
+  const customTags = normalizeList(merchant.custom_tags)
+  const nextSceneTags = [...sceneTags]
+
+  if (
+    merchant.zone === '文档导入档口'
+    || sceneTags.includes('校园档口')
+    || sceneTags.includes('小吃档口')
+    || sceneTags.includes('粉面档口')
+    || sceneTags.includes('盖饭快餐')
+    || sceneTags.includes('热菜档口')
+  ) {
+    nextSceneTags.push('食堂')
+  }
+
+  if (
+    merchant.zone === '外卖美食'
+    || isTakeawayZone
+    || isTakeawaySource
+    || isTakeawayName
+    || sceneTags.includes('外卖')
+    || sceneTags.includes('外卖爆款')
+    || customTags.includes('外卖')
+  ) {
+    nextSceneTags.push('外卖')
+  }
+
+  if (
+    isTakeawaySource
+    || String(merchant.zone || '').includes('校外')
+    || sceneTags.includes('校外')
+    || customTags.includes('校外')
+  ) {
+    nextSceneTags.push('校外')
+  }
+
+  return {
+    ...merchant,
+    scene_tags: sortTagsWithPriority(nextSceneTags),
+    custom_tags: sortTagsWithPriority(customTags),
+  }
+}
+
+const decorateDishTags = (dish, merchant) => {
+  const merchantSceneTags = normalizeList(merchant?.scene_tags)
+  const merchantCustomTags = normalizeList(merchant?.custom_tags)
+  const nextTags = normalizeList(dish.tags)
+
+  if (
+    merchant?.zone === '外卖美食'
+    || merchant?.source === 'meituan'
+    || merchantSceneTags.includes('外卖')
+    || merchantSceneTags.includes('外卖爆款')
+    || merchantCustomTags.includes('外卖')
+  ) {
+    nextTags.push('外卖')
+  }
+
+  return {
+    ...dish,
+    tags: sortTagsWithPriority(nextTags),
+    ingredients: sortTagsWithPriority(dish.ingredients),
+  }
+}
+
+const decorateDiningData = (nextMerchants = [], nextDishes = []) => {
+  const normalizedMerchants = nextMerchants.map(decorateMerchantTags)
+  const merchantMap = new Map(normalizedMerchants.map((merchant) => [merchant.id, merchant]))
+  const normalizedDishes = nextDishes.map((dish) => decorateDishTags(dish, merchantMap.get(dish.merchant_id)))
+
+  return {
+    merchants: normalizedMerchants,
+    dishes: normalizedDishes,
+  }
+}
+
+const seededDiningData = decorateDiningData(seedMerchants, seedDishes)
+
+const merchants = ref(seededDiningData.merchants.map((merchant) => ({ ...merchant })))
+const dishes = ref(seededDiningData.dishes.map((dish) => ({ ...dish })))
 const homeSnapshot = ref({
   counts: {
-    merchants: seedMerchants.length,
-    dishes: seedDishes.length,
-    campusMerchants: seedMerchants.filter((merchant) => merchant.source !== 'meituan').length,
-    takeoutMerchants: seedMerchants.filter((merchant) => merchant.source === 'meituan').length,
+    merchants: seededDiningData.merchants.length,
+    dishes: seededDiningData.dishes.length,
+    campusMerchants: seededDiningData.merchants.filter((merchant) => merchant.source !== 'meituan').length,
+    takeoutMerchants: seededDiningData.merchants.filter((merchant) => merchant.source === 'meituan').length,
   },
   highlights: {
     topTags: [],
@@ -29,12 +140,6 @@ const lastResult = ref(null)
 const safeClone = (value) => JSON.parse(JSON.stringify(value))
 const normalizeText = (value) => String(value || '').trim()
 const normalizeCompareText = (value) => normalizeText(value).toLowerCase()
-
-const normalizeList = (list) => {
-  return [...new Set((list || [])
-    .map(normalizeText)
-    .filter((item) => item && item !== '??'))]
-}
 
 const retiredTestMerchantIds = new Set([
   'merchant-test-noodle',
@@ -53,12 +158,13 @@ const isRetiredTestDish = (dish, retiredMerchantIds = retiredTestMerchantIds) =>
 }
 
 const sanitizeDiningData = (nextMerchants = [], nextDishes = []) => {
-  const visibleMerchants = nextMerchants.filter((merchant) => !isRetiredTestMerchant(merchant))
+  const decorated = decorateDiningData(nextMerchants, nextDishes)
+  const visibleMerchants = decorated.merchants.filter((merchant) => !isRetiredTestMerchant(merchant))
   const visibleMerchantIds = new Set(visibleMerchants.map((merchant) => merchant.id))
 
   return {
     merchants: visibleMerchants,
-    dishes: nextDishes.filter((dish) => {
+    dishes: decorated.dishes.filter((dish) => {
       return visibleMerchantIds.has(dish.merchant_id) && !isRetiredTestDish(dish)
     }),
   }
@@ -271,15 +377,15 @@ export const useDiningStore = () => {
   })
 
   const allSceneTags = computed(() => {
-    return normalizeList(merchants.value.flatMap((merchant) => merchant.scene_tags || []))
+    return sortTagsWithPriority(merchants.value.flatMap((merchant) => merchant.scene_tags || []))
   })
 
   const allDishTags = computed(() => {
-    return normalizeList(dishes.value.flatMap((dish) => dish.tags || []))
+    return sortTagsWithPriority(dishes.value.flatMap((dish) => dish.tags || []))
   })
 
   const allIngredients = computed(() => {
-    return normalizeList(dishes.value.flatMap((dish) => dish.ingredients || []))
+    return sortTagsWithPriority(dishes.value.flatMap((dish) => dish.ingredients || []))
   })
 
   const getMerchantName = (merchantId) => {

@@ -4,6 +4,7 @@ import { useDiningStore } from '../composables/useDiningStore'
 import { getSchoolSearchMeta } from '../services/meituanGateway'
 
 const DASHBOARD_FILTER_KEY = 'wm-diet-wheel-dashboard-filter-v1'
+const PINNED_TAGS = ['外卖', '食堂', '校外']
 
 const readSavedFilter = () => {
   if (typeof window === 'undefined') {
@@ -33,6 +34,27 @@ const isFilterOpen = ref(false)
 const expandedMerchantId = ref('')
 
 const schoolMeta = getSchoolSearchMeta()
+
+const sortTagsWithPriority = (list) => {
+  return [...new Set((list || []).filter(Boolean))].sort((left, right) => {
+    const leftPriority = PINNED_TAGS.indexOf(left)
+    const rightPriority = PINNED_TAGS.indexOf(right)
+
+    if (leftPriority !== -1 || rightPriority !== -1) {
+      if (leftPriority === -1) {
+        return 1
+      }
+
+      if (rightPriority === -1) {
+        return -1
+      }
+
+      return leftPriority - rightPriority
+    }
+
+    return String(left).localeCompare(String(right), 'zh-Hans-CN')
+  })
+}
 
 watch(selectedTags, () => {
   if (typeof window === 'undefined') {
@@ -75,8 +97,8 @@ const getMerchantDishes = (merchantId) => {
 }
 
 const getMerchantTags = (merchant) => {
-  return [...new Set([...(merchant.scene_tags || []), ...(merchant.custom_tags || [])])]
-    .filter((tag) => tag && tag !== '??')
+  return sortTagsWithPriority([...(merchant.scene_tags || []), ...(merchant.custom_tags || [])])
+    .filter((tag) => tag !== '??')
 }
 
 const getMerchantOriginBadges = (merchant) => {
@@ -102,8 +124,8 @@ const getMerchantOriginBadges = (merchant) => {
 }
 
 const getDishChips = (dish) => {
-  return [...new Set([...(dish.tags || []), ...(dish.ingredients || [])])]
-    .filter((tag) => tag && tag !== '??')
+  return sortTagsWithPriority([...(dish.tags || []), ...(dish.ingredients || [])])
+    .filter((tag) => tag !== '??')
     .slice(0, 7)
 }
 
@@ -145,7 +167,7 @@ const filteredMerchants = computed(() => {
 })
 
 const dashboardTags = computed(() => {
-  return [...new Set([...allSceneTags.value, ...allDishTags.value])].filter(Boolean)
+  return sortTagsWithPriority([...allSceneTags.value, ...allDishTags.value]).filter(Boolean)
 })
 
 const getVisibleMerchantDishes = (merchantId) => {
