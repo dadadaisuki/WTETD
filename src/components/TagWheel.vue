@@ -63,7 +63,7 @@ const announcementText = computed(() => {
   }
 
   const weekday = weekdayMap[new Date().getDay()]
-  return `今天${weekday}神奇的转盘，告诉我今天吃什么`
+  return `今天${weekday}，神奇的转盘，告诉我今天吃什么`
 })
 
 const sectors = computed(() => {

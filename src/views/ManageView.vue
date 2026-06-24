@@ -30,6 +30,7 @@ const form = reactive({
   merchantId: 'merchant-qin-noodle',
   tagInput: '',
   ingredientInput: '',
+  newTagIsIngredient: false,
   tags: [],
   ingredients: [],
 })
@@ -60,6 +61,10 @@ watch(merchants, () => {
     activeMerchantId.value = merchants.value[0]?.id || ''
   }
 }, { immediate: true })
+
+const getFormTagPool = () => {
+  return [...form.tags, ...form.ingredients]
+}
 
 const validateTag = (value, existingList = []) => {
   const tag = String(value || '').trim()
@@ -127,19 +132,25 @@ const removeMerchantCustomTag = (tag) => {
 }
 
 const addFormTag = () => {
-  const result = validateTag(form.tagInput, form.tags)
+  const result = validateTag(form.tagInput, getFormTagPool())
   if (!result.ok) {
     tagFeedback.value = { type: 'error', message: result.message }
     return
   }
 
-  form.tags.push(result.tag)
+  if (form.newTagIsIngredient) {
+    form.ingredients.push(result.tag)
+    tagFeedback.value = { type: 'success', message: `已加入食材：${result.tag}` }
+  } else {
+    form.tags.push(result.tag)
+    tagFeedback.value = { type: 'success', message: `已加入餐品 Tag：${result.tag}` }
+  }
+
   form.tagInput = ''
-  tagFeedback.value = { type: 'success', message: `已加入餐品 Tag：${result.tag}` }
 }
 
 const addFormIngredient = () => {
-  const result = validateTag(form.ingredientInput, form.ingredients)
+  const result = validateTag(form.ingredientInput, getFormTagPool())
   if (!result.ok) {
     tagFeedback.value = { type: 'error', message: result.message }
     return
@@ -239,6 +250,7 @@ const submitMerchant = () => {
 
 const validateForm = () => {
   const name = form.name.trim()
+  const hasCalories = String(form.calories).trim() !== ''
   const calories = Number(form.calories)
   const price = Number(form.price)
 
@@ -258,7 +270,7 @@ const validateForm = () => {
     return '该店铺下已存在同名菜品，请勿重复添加。'
   }
 
-  if (!Number.isFinite(calories) || calories <= 0 || calories > 2500) {
+  if (hasCalories && (!Number.isFinite(calories) || calories <= 0 || calories > 2500)) {
     return '热量必须是 1 到 2500 之间的数字。'
   }
 
@@ -279,6 +291,7 @@ const validateForm = () => {
 
 const submitDish = () => {
   const error = validateForm()
+  const hasCalories = String(form.calories).trim() !== ''
   if (error) {
     formFeedback.value = { type: 'error', message: error }
     return
@@ -288,7 +301,7 @@ const submitDish = () => {
     const dish = addDish({
       merchant_id: form.merchantId,
       name: form.name,
-      calories: form.calories,
+      calories: hasCalories ? form.calories : 0,
       price: form.price,
       tags: form.tags,
       ingredients: form.ingredients,
@@ -299,6 +312,7 @@ const submitDish = () => {
     form.price = ''
     form.tagInput = ''
     form.ingredientInput = ''
+    form.newTagIsIngredient = false
     form.tags = []
     form.ingredients = []
     formFeedback.value = { type: 'success', message: `已录入餐品：${dish.name}` }
@@ -402,7 +416,7 @@ onMounted(() => {
         <div class="field-grid">
           <label>
             热量 kcal
-            <input v-model.trim="form.calories" type="number" min="1" max="2500" placeholder="420" />
+            <input v-model.trim="form.calories" type="number" min="1" max="2500" placeholder="选填，例如 420" />
           </label>
           <label>
             价格 RMB
@@ -418,6 +432,11 @@ onMounted(() => {
           <button type="button" @click="addFormTag">添加 Tag</button>
         </div>
 
+        <label class="inline-checkbox">
+          <input v-model="form.newTagIsIngredient" type="checkbox" />
+          <span>这个新增 Tag 归类为食材 tag</span>
+        </label>
+
         <div class="inline-input">
           <label>
             食材
@@ -426,7 +445,9 @@ onMounted(() => {
           <button type="button" @click="addFormIngredient">添加食材</button>
         </div>
 
-        <FeedbackBar :type="tagFeedback.type" :message="tagFeedback.message" />
+        <p class="tag-tips" :class="`tag-tips--${tagFeedback.type}`">
+          tips：{{ tagFeedback.message }}
+        </p>
 
         <div class="tag-preview">
           <button
@@ -524,8 +545,8 @@ onMounted(() => {
 }
 
 .manage-page::after {
-  left: 1rem;
-  bottom: 12rem;
+  right: 1.4rem;
+  bottom: 2.4rem;
   width: 108px;
   height: 24px;
   border: var(--border-strong);
@@ -651,6 +672,20 @@ select {
   gap: 14px;
 }
 
+.inline-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+}
+
+.inline-checkbox input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  box-shadow: none;
+}
+
 .inline-input {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -687,6 +722,21 @@ select {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.tag-tips {
+  margin: -4px 0 0;
+  color: #404040;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tag-tips--error {
+  color: #b42318;
+}
+
+.tag-tips--success {
+  color: #157347;
 }
 
 .tag-preview span,

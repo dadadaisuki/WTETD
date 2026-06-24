@@ -199,8 +199,8 @@ onBeforeUnmount(() => {
 }
 
 .app-shell__decal--line {
-  right: 18%;
-  bottom: 5rem;
+  right: 4%;
+  bottom: 2rem;
   width: 132px;
   height: 24px;
   border-radius: 999px;
@@ -328,8 +328,8 @@ onBeforeUnmount(() => {
 }
 
 .view-panel::after {
-  bottom: 18px;
-  left: 26px;
+  top: 22px;
+  left: 22px;
   width: 92px;
   height: 92px;
   border: var(--border-strong);

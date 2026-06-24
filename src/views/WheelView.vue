@@ -26,7 +26,9 @@ const readWheelPreferences = () => {
 
 const {
   allDishTags,
+  allDishTagOptions,
   allIngredients,
+  allIngredientTagOptions,
   dishes,
   getMerchantName,
   incrementDishHeat,
@@ -69,7 +71,25 @@ const sortTagsWithPriority = (list) => {
   })
 }
 
-const sortedDishTags = computed(() => sortTagsWithPriority(allDishTags.value))
+const sortedDishTags = computed(() => {
+  return sortTagsWithPriority(allDishTags.value).map((tag) => {
+    return allDishTagOptions.value.find((item) => item.value === tag) || {
+      key: `normal:${tag}`,
+      value: tag,
+      label: '一般tag',
+    }
+  })
+})
+
+const sortedIngredientTags = computed(() => {
+  return sortTagsWithPriority(allIngredients.value).map((tag) => {
+    return allIngredientTagOptions.value.find((item) => item.value === tag) || {
+      key: `ingredient:${tag}`,
+      value: tag,
+      label: '食材tag',
+    }
+  })
+})
 
 const buildHistoryKey = (tags, ingredients) => {
   return [
@@ -306,16 +326,17 @@ onMounted(() => {
         <div v-show="openedDrawer === 'tags'" class="drawer-body">
           <label
             v-for="tag in sortedDishTags"
-            :key="tag"
+            :key="tag.key"
             class="check-chip"
-            :class="{ 'check-chip--active': selectedTags.includes(tag) }"
+            :class="{ 'check-chip--active': selectedTags.includes(tag.value) }"
           >
             <input
               type="checkbox"
-              :checked="selectedTags.includes(tag)"
-              @change="toggleTag(tag)"
+              :checked="selectedTags.includes(tag.value)"
+              @change="toggleTag(tag.value)"
             />
-            <span>{{ tag }}</span>
+            <span>{{ tag.value }}</span>
+            <small>{{ tag.label }}</small>
           </label>
         </div>
 
@@ -329,17 +350,18 @@ onMounted(() => {
         </button>
         <div v-show="openedDrawer === 'ingredients'" class="drawer-body">
           <label
-            v-for="ingredient in allIngredients"
-            :key="ingredient"
+            v-for="ingredient in sortedIngredientTags"
+            :key="ingredient.key"
             class="check-chip"
-            :class="{ 'check-chip--active': selectedIngredients.includes(ingredient) }"
+            :class="{ 'check-chip--active': selectedIngredients.includes(ingredient.value) }"
           >
             <input
               type="checkbox"
-              :checked="selectedIngredients.includes(ingredient)"
-              @change="toggleIngredient(ingredient)"
+              :checked="selectedIngredients.includes(ingredient.value)"
+              @change="toggleIngredient(ingredient.value)"
             />
-            <span>{{ ingredient }}</span>
+            <span>{{ ingredient.value }}</span>
+            <small>{{ ingredient.label }}</small>
           </label>
         </div>
 
@@ -454,8 +476,8 @@ onMounted(() => {
 }
 
 .wheel-page::after {
-  left: 1rem;
-  bottom: 18rem;
+  right: 1.6rem;
+  bottom: 12rem;
   width: 118px;
   height: 24px;
   border: var(--border-strong);
@@ -599,6 +621,12 @@ onMounted(() => {
 .check-chip:hover {
   transform: translate(-2px, -2px);
   box-shadow: 6px 6px 0 #151515;
+}
+
+.check-chip small {
+  color: #4e4e4e;
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .check-chip--active {

@@ -34,6 +34,13 @@ const sortTagsWithPriority = (list) => {
   })
 }
 
+const createTypedTagOption = (value, type) => ({
+  key: `${type}:${value}`,
+  value,
+  type,
+  label: type === 'ingredient' ? '食材tag' : '一般tag',
+})
+
 const getMerchantTagPool = (merchant) => {
   return normalizeList([...(merchant?.scene_tags || []), ...(merchant?.custom_tags || [])])
 }
@@ -111,7 +118,9 @@ const decorateMerchantTags = (merchant) => {
 const decorateDishTags = (dish, merchant) => {
   const merchantSceneTags = normalizeList(merchant?.scene_tags)
   const merchantCustomTags = normalizeList(merchant?.custom_tags)
-  const nextTags = normalizeList(dish.tags)
+  const nextIngredients = sortTagsWithPriority(dish.ingredients)
+  const ingredientSet = new Set(nextIngredients)
+  const nextTags = normalizeList(dish.tags).filter((tag) => !ingredientSet.has(tag))
 
   if (
     merchant?.zone === '外卖美食'
@@ -126,7 +135,7 @@ const decorateDishTags = (dish, merchant) => {
   return {
     ...dish,
     tags: sortTagsWithPriority(nextTags),
-    ingredients: sortTagsWithPriority(dish.ingredients),
+    ingredients: nextIngredients,
   }
 }
 
@@ -431,12 +440,25 @@ export const useDiningStore = () => {
     return sortTagsWithPriority(merchants.value.flatMap((merchant) => merchant.scene_tags || []))
   })
 
-  const allDishTags = computed(() => {
-    return sortTagsWithPriority(dishes.value.flatMap((dish) => dish.tags || []))
-  })
-
   const allIngredients = computed(() => {
     return sortTagsWithPriority(dishes.value.flatMap((dish) => dish.ingredients || []))
+  })
+
+  const ingredientTagSet = computed(() => {
+    return new Set(allIngredients.value)
+  })
+
+  const allDishTags = computed(() => {
+    return sortTagsWithPriority(dishes.value.flatMap((dish) => dish.tags || []))
+      .filter((tag) => !ingredientTagSet.value.has(tag))
+  })
+
+  const allDishTagOptions = computed(() => {
+    return allDishTags.value.map((value) => createTypedTagOption(value, 'normal'))
+  })
+
+  const allIngredientTagOptions = computed(() => {
+    return allIngredients.value.map((value) => createTypedTagOption(value, 'ingredient'))
   })
 
   const getMerchantName = (merchantId) => {
@@ -505,7 +527,9 @@ export const useDiningStore = () => {
       ...(merchant?.scene_tags || []),
       ...(merchant?.custom_tags || []),
     ]
-    const payloadTags = normalizeList(payload.tags)
+    const payloadIngredients = normalizeList(payload.ingredients)
+    const ingredientSet = new Set(payloadIngredients)
+    const payloadTags = normalizeList(payload.tags).filter((tag) => !ingredientSet.has(tag))
     const shouldMarkTakeaway = merchant?.source === 'meituan'
       || merchantTags.includes('校外')
       || merchantTags.includes('外卖')
@@ -521,7 +545,7 @@ export const useDiningStore = () => {
       price: Number(payload.price) || 0,
       heat: 1,
       tags: normalizeList([...payloadTags, shouldMarkTakeaway ? '外卖' : '']),
-      ingredients: normalizeList(payload.ingredients),
+      ingredients: payloadIngredients,
       updated_at: new Date().toISOString(),
     }
 
@@ -654,6 +678,8 @@ export const useDiningStore = () => {
     allSceneTags,
     allDishTags,
     allIngredients,
+    allDishTagOptions,
+    allIngredientTagOptions,
     getMerchant,
     getMerchantName,
     loadCatalog,

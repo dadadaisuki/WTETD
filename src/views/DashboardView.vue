@@ -130,13 +130,15 @@ const getDishChips = (dish) => {
     .slice(0, 7)
 }
 
-const heatMetric = (merchant) => {
+const rankingScore = (merchant) => {
   const dishHeatScore = getMerchantDishes(merchant.id)
     .reduce((sum, dish) => sum + Number(dish.heat || 0), 0)
   const tagScore = getMerchantTags(merchant).length * 3
 
   return Math.round(Number(merchant.heat || 0) + dishHeatScore * 0.28 + tagScore)
 }
+
+const heatMetric = () => 50
 
 const filteredMerchants = computed(() => {
   const activeTags = selectedTags.value
@@ -164,7 +166,7 @@ const filteredMerchants = computed(() => {
     return tagMatched && searchMatched
   })
 
-  return [...pool].sort((left, right) => heatMetric(right) - heatMetric(left))
+  return [...pool].sort((left, right) => rankingScore(right) - rankingScore(left))
 })
 
 const dashboardTags = computed(() => {
@@ -337,7 +339,7 @@ onMounted(() => {
                   </div>
                   <div>
                     <span>协同热度</span>
-                    <strong>{{ merchant.heat || 0 }}</strong>
+                    <strong>50</strong>
                   </div>
                 </div>
 
