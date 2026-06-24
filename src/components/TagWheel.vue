@@ -22,6 +22,8 @@ const rotationDeg = ref(0)
 const isSpinning = ref(false)
 const pointerResult = ref(null)
 
+const weekdayMap = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
+
 const wheelColors = [
   '#ff62b2',
   '#ffe14d',
@@ -45,6 +47,23 @@ const getWeight = (item) => {
 
 const totalWeight = computed(() => {
   return props.items.reduce((sum, item) => sum + getWeight(item), 0)
+})
+
+const isThursday = computed(() => {
+  return new Date().getDay() === 4
+})
+
+const announcementTitle = computed(() => {
+  return isThursday.value ? '今日公告' : '公告栏'
+})
+
+const announcementText = computed(() => {
+  if (isThursday.value) {
+    return '今日疯狂星期四大量出没'
+  }
+
+  const weekday = weekdayMap[new Date().getDay()]
+  return `今天${weekday}神奇的转盘，告诉我今天吃什么`
 })
 
 const sectors = computed(() => {
@@ -210,9 +229,10 @@ watch(() => props.items, () => {
       {{ spinButtonText }}
     </button>
 
-    <p class="wheel-card__hint">
-      扇区面积由基础权重 + 热度共同决定，热度越高概率越高，但不会完全吞掉低热度餐品的机会。
-    </p>
+    <section class="wheel-card__notice" aria-live="polite">
+      <span>{{ announcementTitle }}</span>
+      <p>{{ announcementText }}</p>
+    </section>
   </div>
 </template>
 
@@ -422,7 +442,7 @@ watch(() => props.items, () => {
   opacity: 0.5;
 }
 
-.wheel-card__hint {
+.wheel-card__notice {
   max-width: 520px;
   margin: 0;
   padding: 14px 16px;
@@ -433,6 +453,19 @@ watch(() => props.items, () => {
   text-align: center;
   font-weight: 700;
   box-shadow: var(--shadow-sticker);
+}
+
+.wheel-card__notice span {
+  display: block;
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.wheel-card__notice p {
+  margin: 6px 0 0;
 }
 
 .result-pop-enter-active,

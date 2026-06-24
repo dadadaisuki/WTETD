@@ -26,33 +26,6 @@ const activeModule = computed(() => {
   return props.modules.find((module) => module.key === activeKey.value) || props.modules[0]
 })
 
-const summaryCards = computed(() => {
-  const counts = props.homeSnapshot?.counts || {}
-
-  return [
-    {
-      key: 'merchant-count',
-      label: '店铺总数',
-      value: counts.merchants || 0,
-    },
-    {
-      key: 'dish-count',
-      label: '菜品总数',
-      value: counts.dishes || 0,
-    },
-    {
-      key: 'campus-count',
-      label: '校园内店铺',
-      value: counts.campusMerchants || 0,
-    },
-    {
-      key: 'takeout-count',
-      label: '校外 / 外卖',
-      value: counts.takeoutMerchants || 0,
-    },
-  ]
-})
-
 const chooseModule = (key) => {
   emit('choose-module', key)
 }
@@ -93,17 +66,6 @@ const chooseModule = (key) => {
       </button>
     </div>
 
-    <div class="summary-grid">
-      <article
-        v-for="card in summaryCards"
-        :key="card.key"
-        class="summary-card"
-      >
-        <span>{{ card.label }}</span>
-        <strong>{{ card.value }}</strong>
-      </article>
-    </div>
-
     <transition name="spec-panel" mode="out-in">
       <aside v-if="activeModule" :key="activeModule.key" class="module-spec">
         <span>{{ activeModule.eyebrow }}</span>
@@ -127,7 +89,7 @@ const chooseModule = (key) => {
   position: relative;
   min-height: min(760px, calc(100vh - 110px));
   display: grid;
-  grid-template-rows: 1fr auto auto auto;
+  grid-template-rows: 1fr auto auto;
   gap: 30px;
   overflow: hidden;
   padding: clamp(42px, 8vw, 92px);
@@ -382,34 +344,6 @@ const chooseModule = (key) => {
   font-weight: 700;
 }
 
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.summary-card {
-  display: grid;
-  gap: 8px;
-  padding: 18px 20px;
-  border: var(--border-strong);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: var(--shadow-sticker);
-}
-
-.summary-card span {
-  color: #404040;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.summary-card strong {
-  color: var(--ink);
-  font-size: clamp(26px, 3vw, 38px);
-  line-height: 1;
-}
-
 .module-spec {
   position: relative;
   max-width: 760px;
@@ -518,8 +452,7 @@ const chooseModule = (key) => {
     display: none;
   }
 
-  .launch-grid,
-  .summary-grid {
+  .launch-grid {
     grid-template-columns: 1fr;
   }
 }

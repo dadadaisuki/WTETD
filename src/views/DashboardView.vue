@@ -23,6 +23,7 @@ const {
   allDishTags,
   allSceneTags,
   dishes,
+  homeSnapshot,
   loadCatalog,
   merchants,
 } = useDiningStore()
@@ -170,6 +171,33 @@ const dashboardTags = computed(() => {
   return sortTagsWithPriority([...allSceneTags.value, ...allDishTags.value]).filter(Boolean)
 })
 
+const statsCards = computed(() => {
+  const counts = homeSnapshot.value?.counts || {}
+
+  return [
+    {
+      key: 'merchant-count',
+      label: '店铺总数',
+      value: counts.merchants || 0,
+    },
+    {
+      key: 'dish-count',
+      label: '菜品总数',
+      value: counts.dishes || 0,
+    },
+    {
+      key: 'campus-count',
+      label: '校园内店铺',
+      value: counts.campusMerchants || 0,
+    },
+    {
+      key: 'outside-count',
+      label: '校外 / 外卖',
+      value: counts.takeoutMerchants || 0,
+    },
+  ]
+})
+
 const getVisibleMerchantDishes = (merchantId) => {
   const merchantDishes = getMerchantDishes(merchantId)
 
@@ -220,135 +248,150 @@ onMounted(() => {
       </p>
     </div>
 
-    <label class="search-box">
-      <span>搜索店铺 / 菜品 / Tag</span>
-      <input
-        v-model.trim="searchQuery"
-        type="search"
-        placeholder="例如：牛肉、面食、轻食、秦味"
-      />
-      <small>当前匹配 {{ filteredMerchants.length }} 家店铺</small>
-    </label>
+    <div class="dashboard-layout">
+      <aside class="dashboard-sidebar">
+        <section class="stats-panel">
+          <article
+            v-for="card in statsCards"
+            :key="card.key"
+            class="stats-card"
+          >
+            <span>{{ card.label }}</span>
+            <strong>{{ card.value }}</strong>
+          </article>
+        </section>
 
-    <section class="filter-drawer" :class="{ 'filter-drawer--open': isFilterOpen }">
-      <button type="button" class="filter-drawer__trigger" @click="isFilterOpen = !isFilterOpen">
-        <span>Tag 筛选</span>
-        <strong>{{ selectedTags.length ? `${selectedTags.length} 个已选` : '未筛选' }}</strong>
-      </button>
-
-      <div v-show="isFilterOpen" class="filter-drawer__body">
-        <label
-          v-for="tag in dashboardTags"
-          :key="tag"
-          class="check-chip"
-          :class="{ 'check-chip--active': selectedTags.includes(tag) }"
-        >
+        <label class="search-box">
+          <span>搜索店铺 / 菜品 / Tag</span>
           <input
-            type="checkbox"
-            :checked="selectedTags.includes(tag)"
-            @change="toggleTag(tag)"
+            v-model.trim="searchQuery"
+            type="search"
+            placeholder="例如：牛肉、面食、轻食、秦味"
           />
-          <span>{{ tag }}</span>
+          <small>当前匹配 {{ filteredMerchants.length }} 家店铺</small>
         </label>
 
-        <button type="button" class="check-chip check-chip--reset" @click="resetFilters">
-          清空筛选
-        </button>
-      </div>
-    </section>
+        <section class="filter-drawer" :class="{ 'filter-drawer--open': isFilterOpen }">
+          <button type="button" class="filter-drawer__trigger" @click="isFilterOpen = !isFilterOpen">
+            <span>Tag 筛选</span>
+            <strong>{{ selectedTags.length ? `${selectedTags.length} 个已选` : '未筛选' }}</strong>
+          </button>
 
-    <TransitionGroup tag="div" name="merchant-list" class="merchant-grid">
-      <article
-        v-for="merchant in filteredMerchants"
-        :key="merchant.id"
-        class="merchant-card"
-        :class="{ 'merchant-card--expanded': isMerchantExpanded(merchant.id) }"
-        @click="toggleMerchant(merchant.id)"
-      >
-        <div class="merchant-card__shell">
-          <div class="merchant-card__topline">
-            <div class="merchant-card__badges">
-              <span
-                v-for="badge in getMerchantOriginBadges(merchant)"
-                :key="`${merchant.id}-${badge}`"
-              >
-                {{ badge }}
-              </span>
-            </div>
+          <div v-show="isFilterOpen" class="filter-drawer__body">
+            <label
+              v-for="tag in dashboardTags"
+              :key="tag"
+              class="check-chip"
+              :class="{ 'check-chip--active': selectedTags.includes(tag) }"
+            >
+              <input
+                type="checkbox"
+                :checked="selectedTags.includes(tag)"
+                @change="toggleTag(tag)"
+              />
+              <span>{{ tag }}</span>
+            </label>
+
+            <button type="button" class="check-chip check-chip--reset" @click="resetFilters">
+              清空筛选
+            </button>
           </div>
+        </section>
+      </aside>
 
-          <h3>{{ merchant.name }}</h3>
-          <p class="merchant-card__hint">
-            {{ isMerchantExpanded(merchant.id) ? '点击收起详情' : '点击查看菜品' }}
-          </p>
-
-          <transition name="card-detail">
-            <div v-if="isMerchantExpanded(merchant.id)" class="merchant-card__details">
-              <div class="merchant-card__summary">
-                <div>
-                  <span>综合热度</span>
-                  <strong>{{ heatMetric(merchant) }}</strong>
-                </div>
-                <div>
-                  <span>店内菜品</span>
-                  <strong>{{ getMerchantDishes(merchant.id).length }}</strong>
-                </div>
-                <div>
-                  <span>协同热度</span>
-                  <strong>{{ merchant.heat || 0 }}</strong>
-                </div>
-              </div>
-
-              <p class="merchant-card__location">
-                {{ merchant.zone }}
-              </p>
-
-              <div class="dish-preview">
-                <div class="dish-preview__head">
-                  <span>店家对应菜品</span>
-                  <small>点击“新增标签”可以继续补充菜品和 Tag</small>
-                </div>
-
-                <div v-if="getVisibleMerchantDishes(merchant.id).length" class="dish-list">
-                  <article
-                    v-for="dish in getVisibleMerchantDishes(merchant.id)"
-                    :key="dish.id"
-                    class="dish-card"
-                  >
-                    <div>
-                      <strong>{{ dish.name }}</strong>
-                      <span>热度 {{ dish.heat || 0 }}</span>
-                    </div>
-
-                    <div class="dish-tags">
-                      <small
-                        v-for="tag in getDishChips(dish)"
-                        :key="`${dish.id}-${tag}`"
-                      >
-                        {{ tag }}
-                      </small>
-                    </div>
-                  </article>
-                </div>
-
-                <p v-else class="empty-dishes">
-                  这个店铺还没有录入菜品，可以去“新增标签”模块补充。
-                </p>
-              </div>
-
-              <div class="tag-row">
+      <TransitionGroup tag="div" name="merchant-list" class="merchant-grid">
+        <article
+          v-for="merchant in filteredMerchants"
+          :key="merchant.id"
+          class="merchant-card"
+          :class="{ 'merchant-card--expanded': isMerchantExpanded(merchant.id) }"
+          @click="toggleMerchant(merchant.id)"
+        >
+          <div class="merchant-card__shell">
+            <div class="merchant-card__topline">
+              <div class="merchant-card__badges">
                 <span
-                  v-for="tag in getMerchantTags(merchant)"
-                  :key="`${merchant.id}-${tag}`"
+                  v-for="badge in getMerchantOriginBadges(merchant)"
+                  :key="`${merchant.id}-${badge}`"
                 >
-                  {{ tag }}
+                  {{ badge }}
                 </span>
               </div>
             </div>
-          </transition>
-        </div>
-      </article>
-    </TransitionGroup>
+
+            <h3>{{ merchant.name }}</h3>
+            <p class="merchant-card__hint">
+              {{ isMerchantExpanded(merchant.id) ? '点击收起详情' : '点击查看菜品' }}
+            </p>
+
+            <transition name="card-detail">
+              <div v-if="isMerchantExpanded(merchant.id)" class="merchant-card__details">
+                <div class="merchant-card__summary">
+                  <div>
+                    <span>综合热度</span>
+                    <strong>{{ heatMetric(merchant) }}</strong>
+                  </div>
+                  <div>
+                    <span>店内菜品</span>
+                    <strong>{{ getMerchantDishes(merchant.id).length }}</strong>
+                  </div>
+                  <div>
+                    <span>协同热度</span>
+                    <strong>{{ merchant.heat || 0 }}</strong>
+                  </div>
+                </div>
+
+                <p class="merchant-card__location">
+                  {{ merchant.zone }}
+                </p>
+
+                <div class="dish-preview">
+                  <div class="dish-preview__head">
+                    <span>店家对应菜品</span>
+                    <small>点击“新增标签”可以继续补充菜品和 Tag</small>
+                  </div>
+
+                  <div v-if="getVisibleMerchantDishes(merchant.id).length" class="dish-list">
+                    <article
+                      v-for="dish in getVisibleMerchantDishes(merchant.id)"
+                      :key="dish.id"
+                      class="dish-card"
+                    >
+                      <div>
+                        <strong>{{ dish.name }}</strong>
+                        <span>热度 {{ dish.heat || 0 }}</span>
+                      </div>
+
+                      <div class="dish-tags">
+                        <small
+                          v-for="tag in getDishChips(dish)"
+                          :key="`${dish.id}-${tag}`"
+                        >
+                          {{ tag }}
+                        </small>
+                      </div>
+                    </article>
+                  </div>
+
+                  <p v-else class="empty-dishes">
+                    这个店铺还没有录入菜品，可以去“新增标签”模块补充。
+                  </p>
+                </div>
+
+                <div class="tag-row">
+                  <span
+                    v-for="tag in getMerchantTags(merchant)"
+                    :key="`${merchant.id}-${tag}`"
+                  >
+                    {{ tag }}
+                  </span>
+                </div>
+              </div>
+            </transition>
+          </div>
+        </article>
+      </TransitionGroup>
+    </div>
   </section>
 </template>
 
@@ -358,6 +401,47 @@ onMounted(() => {
   display: grid;
   gap: 22px;
   padding-top: 4px;
+}
+
+.dashboard-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.dashboard-sidebar {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 16px;
+}
+
+.stats-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.stats-card {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border: var(--border-strong);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow-sticker);
+}
+
+.stats-card span {
+  color: #444;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.stats-card strong {
+  color: var(--ink);
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1;
 }
 
 .dashboard-page::before,
@@ -858,6 +942,14 @@ onMounted(() => {
 }
 
 @media (max-width: 760px) {
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-sidebar {
+    position: static;
+  }
+
   .merchant-card--expanded {
     grid-column: 1 / -1;
   }

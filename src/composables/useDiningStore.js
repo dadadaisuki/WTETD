@@ -34,9 +34,36 @@ const sortTagsWithPriority = (list) => {
   })
 }
 
+const getMerchantTagPool = (merchant) => {
+  return normalizeList([...(merchant?.scene_tags || []), ...(merchant?.custom_tags || [])])
+}
+
+const isOutsideMerchant = (merchant) => {
+  const tags = getMerchantTagPool(merchant)
+
+  return merchant?.source === 'meituan'
+    || String(merchant?.zone || '').includes('校外')
+    || tags.includes('校外')
+}
+
+const isTakeawayMerchant = (merchant) => {
+  const tags = getMerchantTagPool(merchant)
+
+  return merchant?.source === 'takeaway'
+    || String(merchant?.zone || '').includes('外卖')
+    || tags.includes('外卖')
+    || tags.includes('外卖爆款')
+}
+
+const isCampusMerchant = (merchant) => {
+  return !isOutsideMerchant(merchant)
+    && merchant?.source !== 'takeaway'
+    && merchant?.zone !== '外卖美食'
+}
+
 const decorateMerchantTags = (merchant) => {
   const isTakeawayZone = String(merchant.zone || '').includes('外卖')
-  const isTakeawaySource = merchant.source === 'meituan'
+  const isTakeawaySource = merchant.source === 'meituan' || merchant.source === 'takeaway'
   const isTakeawayName = String(merchant.name || '').includes('外卖')
   const sceneTags = normalizeList(merchant.scene_tags)
   const customTags = normalizeList(merchant.custom_tags)
@@ -122,8 +149,10 @@ const homeSnapshot = ref({
   counts: {
     merchants: seededDiningData.merchants.length,
     dishes: seededDiningData.dishes.length,
-    campusMerchants: seededDiningData.merchants.filter((merchant) => merchant.source !== 'meituan').length,
-    takeoutMerchants: seededDiningData.merchants.filter((merchant) => merchant.source === 'meituan').length,
+    campusMerchants: seededDiningData.merchants.filter((merchant) => isCampusMerchant(merchant)).length,
+    takeoutMerchants: seededDiningData.merchants.filter((merchant) => {
+      return isOutsideMerchant(merchant) || isTakeawayMerchant(merchant)
+    }).length,
   },
   highlights: {
     topTags: [],
@@ -138,6 +167,18 @@ const syncMessage = ref('等待同步')
 const lastResult = ref(null)
 
 const safeClone = (value) => JSON.parse(JSON.stringify(value))
+const mergeRecordsById = (baseList = [], nextList = []) => {
+  const mergedMap = new Map(baseList.map((item) => [item.id, safeClone(item)]))
+
+  nextList.forEach((item) => {
+    mergedMap.set(item.id, {
+      ...(mergedMap.get(item.id) || {}),
+      ...safeClone(item),
+    })
+  })
+
+  return [...mergedMap.values()]
+}
 const normalizeText = (value) => String(value || '').trim()
 const normalizeCompareText = (value) => normalizeText(value).toLowerCase()
 
@@ -231,8 +272,10 @@ const rebuildHomeSnapshot = () => {
     counts: {
       merchants: merchants.value.length,
       dishes: dishes.value.length,
-      campusMerchants: merchants.value.filter((merchant) => merchant.source !== 'meituan').length,
-      takeoutMerchants: merchants.value.filter((merchant) => merchant.source === 'meituan').length,
+      campusMerchants: merchants.value.filter((merchant) => isCampusMerchant(merchant)).length,
+      takeoutMerchants: merchants.value.filter((merchant) => {
+        return isOutsideMerchant(merchant) || isTakeawayMerchant(merchant)
+      }).length,
     },
     highlights: {
       topTags: [...topTagScores.entries()]
@@ -253,8 +296,14 @@ const hydrateLocalData = () => {
   }
 
   const sanitized = sanitizeDiningData(
-    Array.isArray(cached.merchants) ? cached.merchants : [],
-    Array.isArray(cached.dishes) ? cached.dishes : [],
+    mergeRecordsById(
+      seededDiningData.merchants,
+      Array.isArray(cached.merchants) ? cached.merchants : [],
+    ),
+    mergeRecordsById(
+      seededDiningData.dishes,
+      Array.isArray(cached.dishes) ? cached.dishes : [],
+    ),
   )
 
   if (sanitized.merchants.length > 0) {
@@ -265,11 +314,7 @@ const hydrateLocalData = () => {
     dishes.value = sanitized.dishes
   }
 
-  if (cached.homeSnapshot?.counts) {
-    homeSnapshot.value = cached.homeSnapshot
-  } else {
-    rebuildHomeSnapshot()
-  }
+  rebuildHomeSnapshot()
 }
 
 const ensureBootstrapped = () => {
@@ -288,8 +333,14 @@ const applyCatalogPayload = (scope, payload) => {
 
   if (payload?.merchants || payload?.dishes) {
     const sanitized = sanitizeDiningData(
-      Array.isArray(payload.merchants) ? payload.merchants : merchants.value,
-      Array.isArray(payload.dishes) ? payload.dishes : dishes.value,
+      mergeRecordsById(
+        seededDiningData.merchants,
+        Array.isArray(payload.merchants) ? payload.merchants : merchants.value,
+      ),
+      mergeRecordsById(
+        seededDiningData.dishes,
+        Array.isArray(payload.dishes) ? payload.dishes : dishes.value,
+      ),
     )
 
     if (Array.isArray(payload.merchants)) {
