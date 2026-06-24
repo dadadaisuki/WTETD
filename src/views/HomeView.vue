@@ -44,7 +44,7 @@ const chooseModule = (key) => {
       <p class="hero-copy__overline">Campus Food Decision System</p>
       <h1 class="hero-copy__title">今天吃什么</h1>
       <p class="hero-copy__subtitle">
-        先选一个入口：看周边、转转盘，或者把你发现的好店补充进去。
+        看看周边都有什么吃的、转随心所欲转转盘，发现的好店自行补充。
       </p>
     </div>
 

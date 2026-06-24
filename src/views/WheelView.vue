@@ -30,6 +30,7 @@ const {
   allIngredients,
   allIngredientTagOptions,
   dishes,
+  getMerchant,
   getMerchantName,
   incrementDishHeat,
   lastResult,
@@ -232,6 +233,75 @@ const filterSummary = computed(() => {
   return `${tags} · ${ingredients}`
 })
 
+const spotlightDish = computed(() => {
+  return pendingResult.value || lastResult.value || null
+})
+
+const spotlightMerchant = computed(() => {
+  const dish = spotlightDish.value
+  return dish ? getMerchant(dish.merchant_id) : null
+})
+
+const spotlightMerchantTags = computed(() => {
+  if (!spotlightMerchant.value) {
+    return []
+  }
+
+  return sortTagsWithPriority([
+    ...(spotlightMerchant.value.scene_tags || []),
+    ...(spotlightMerchant.value.custom_tags || []),
+  ])
+})
+
+const spotlightMerchantDishes = computed(() => {
+  const dish = spotlightDish.value
+  if (!dish) {
+    return []
+  }
+
+  return dishes.value
+    .filter((item) => item.merchant_id === dish.merchant_id)
+    .sort((left, right) => {
+      if (left.id === dish.id) {
+        return -1
+      }
+
+      if (right.id === dish.id) {
+        return 1
+      }
+
+      return Number(right.heat || 0) - Number(left.heat || 0)
+    })
+    .slice(0, 6)
+})
+
+const spotlightTitle = computed(() => {
+  return pendingResult.value ? '本次命中商家' : '最近一次命中商家'
+})
+
+const formatPrice = (value) => {
+  const price = Number(value || 0)
+  if (!Number.isFinite(price) || price <= 0) {
+    return ''
+  }
+
+  return Number.isInteger(price) ? String(price) : price.toFixed(1)
+}
+
+const getDishMetaLine = (dish) => {
+  const meta = [`热度 ${dish.heat || 0}`]
+
+  if (Number(dish.price || 0) > 0) {
+    meta.push(`¥${formatPrice(dish.price)}`)
+  }
+
+  if (Number(dish.calories || 0) > 0) {
+    meta.push(`${dish.calories} kcal`)
+  }
+
+  return meta.join(' · ')
+}
+
 const isSpinDisabled = computed(() => {
   return cooldownLocked.value || weightedDishes.value.length === 0
 })
@@ -426,6 +496,53 @@ onMounted(() => {
             <p>{{ getMerchantName(lastResult.merchant_id) }} · 当前热度 {{ lastResult.heat }}</p>
           </div>
         </div>
+
+        <transition name="merchant-spotlight">
+          <section
+            v-if="spotlightMerchant && spotlightDish"
+            class="merchant-spotlight"
+          >
+            <div class="merchant-spotlight__head">
+              <div>
+                <span>{{ spotlightTitle }}</span>
+                <h3>{{ spotlightMerchant.name }}</h3>
+              </div>
+              <strong>{{ spotlightDish.name }}</strong>
+            </div>
+
+            <p class="merchant-spotlight__location">
+              {{ spotlightMerchant.zone }}
+            </p>
+
+            <div v-if="spotlightMerchantTags.length" class="merchant-spotlight__tags">
+              <small
+                v-for="tag in spotlightMerchantTags"
+                :key="`${spotlightMerchant.id}-${tag}`"
+              >
+                {{ tag }}
+              </small>
+            </div>
+
+            <div class="merchant-spotlight__dishes">
+              <article
+                v-for="dish in spotlightMerchantDishes"
+                :key="dish.id"
+                class="merchant-spotlight__dish"
+                :class="{ 'merchant-spotlight__dish--active': dish.id === spotlightDish.id }"
+              >
+                <div>
+                  <strong>{{ dish.name }}</strong>
+                  <span>{{ dish.id === spotlightDish.id ? '本次抽中' : '同店菜品' }}</span>
+                </div>
+                <p>{{ getDishMetaLine(dish) }}</p>
+              </article>
+            </div>
+
+            <p v-if="spotlightMerchantDishes.length === 1" class="merchant-spotlight__empty">
+              这个商家目前只录入了这一道菜，后面还可以继续补充更多菜品。
+            </p>
+          </section>
+        </transition>
       </main>
     </div>
 
@@ -787,6 +904,126 @@ onMounted(() => {
   color: #414141;
 }
 
+.merchant-spotlight {
+  width: min(760px, 100%);
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+  border: var(--border-strong);
+  border-radius: 28px;
+  background:
+    linear-gradient(135deg, transparent 0 28%, rgba(21, 21, 21, 0.08) 28% 32%, transparent 32% 100%),
+    #fffef0;
+  color: var(--ink);
+  text-align: left;
+  box-shadow: var(--shadow-sticker);
+}
+
+.merchant-spotlight__head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.merchant-spotlight__head span {
+  display: block;
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.merchant-spotlight__head h3 {
+  margin: 6px 0 0;
+  font-size: clamp(26px, 4vw, 36px);
+  letter-spacing: -0.05em;
+}
+
+.merchant-spotlight__head > strong {
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  border: var(--border-strong);
+  border-radius: 18px;
+  background: var(--lime);
+  font-size: 15px;
+  box-shadow: 4px 4px 0 #151515;
+}
+
+.merchant-spotlight__location,
+.merchant-spotlight__empty {
+  margin: 0;
+  color: #424242;
+  font-weight: 700;
+}
+
+.merchant-spotlight__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.merchant-spotlight__tags small {
+  padding: 6px 10px;
+  border: 2px solid #151515;
+  border-radius: 999px;
+  background: var(--sky);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.merchant-spotlight__dishes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.merchant-spotlight__dish {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: var(--border-strong);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 4px 4px 0 #151515;
+}
+
+.merchant-spotlight__dish--active {
+  background: #f4ffe9;
+}
+
+.merchant-spotlight__dish > div {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.merchant-spotlight__dish strong {
+  color: var(--ink);
+}
+
+.merchant-spotlight__dish span,
+.merchant-spotlight__dish p {
+  margin: 0;
+  color: #454545;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.merchant-spotlight-enter-active,
+.merchant-spotlight-leave-active {
+  transition: opacity 0.26s ease, transform 0.32s ease;
+}
+
+.merchant-spotlight-enter-from,
+.merchant-spotlight-leave-to {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
 .candidate-panel {
   display: grid;
   gap: 14px;
@@ -858,6 +1095,11 @@ onMounted(() => {
 @media (max-width: 980px) {
   .wheel-layout {
     grid-template-columns: 1fr;
+  }
+
+  .merchant-spotlight__head {
+    grid-template-columns: 1fr;
+    display: grid;
   }
 }
 </style>

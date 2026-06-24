@@ -345,25 +345,25 @@ onMounted(() => {
 
         <label>
           店铺名称
-          <input v-model.trim="merchantForm.name" type="text" placeholder="" />
+          <input v-model.trim="merchantForm.name" type="text" placeholder="例：小碗菜" />
         </label>
 
         <label>
           位置说明
-          <input v-model.trim="merchantForm.zone" type="text" placeholder="例如：北门左转 / 弘德苑一楼" />
+          <input v-model.trim="merchantForm.zone" type="text" placeholder="例如：北门左转 / 大食堂1楼" />
         </label>
 
         <div class="inline-input">
           <label>
             店铺场景 Tag
-            <input v-model.trim="merchantForm.sceneTagInput" type="text" placeholder="例:面/自选/少油" />
+            <input v-model.trim="merchantForm.sceneTagInput" type="text" placeholder="必填：至少填入食堂/校外/外卖" />
           </label>
           <button type="button" @click="addMerchantSceneTag">添加场景</button>
         </div>
 
         <div class="inline-input">
           <label>
-            店铺协同 Tag
+            店铺特色 Tag
             <input v-model.trim="merchantForm.customTagInput" type="text" placeholder="例：出餐快/性价比" />
           </label>
           <button type="button" @click="addMerchantCustomTag">添加 Tag</button>
@@ -416,7 +416,7 @@ onMounted(() => {
         <div class="field-grid">
           <label>
             热量 kcal
-            <input v-model.trim="form.calories" type="number" min="1" max="2500" placeholder="选填，例如 420" />
+            <input v-model.trim="form.calories" type="number" min="1" max="2500" placeholder="选填，可通过小程序拍照计算" />
           </label>
           <label>
             价格 RMB
