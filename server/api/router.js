@@ -85,6 +85,10 @@ export const createApiRouter = (envSource = {}) => {
   }
 
   const handlePost = async ({ segments, pathname, body }) => {
+    if (!body) {
+      return json({ message: 'Request body is required.' }, 400)
+    }
+
     if (segments[0] === 'merchants' && segments.length === 1) {
       const merchants = sanitizeMerchantPayload(body)
       const saved = await repository.saveMerchants(Array.isArray(body) ? merchants : merchants[0])

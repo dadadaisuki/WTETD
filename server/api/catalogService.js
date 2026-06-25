@@ -99,7 +99,7 @@ export const createCatalogService = (repository) => {
   const getWheelCatalog = async () => {
     const [merchants, dishes] = await Promise.all([
       repository.listMerchants({
-        fields: ['id', 'name', 'updated_at'],
+        fields: ['id', 'name', 'scene_tags', 'custom_tags', 'updated_at'],
         orderBy: 'name.asc',
       }),
       repository.listDishes({
