@@ -1,9 +1,8 @@
-import { computed, ref, watch } from 'vue'
-import { seedDishes, seedMerchants } from '../data/seedData'
+import { computed, ref } from 'vue'
 import { createSupabaseGateway } from '../services/supabaseGateway'
 
-const STORAGE_KEY = 'wm-diet-wheel-data-v5'
 const gateway = createSupabaseGateway()
+const STORAGE_KEY = 'wm-diet-wheel-cloud-cache-v1'
 
 const TAG_PRIORITY = ['外卖', '食堂', '校外']
 
@@ -150,23 +149,11 @@ const decorateDiningData = (nextMerchants = [], nextDishes = []) => {
   }
 }
 
-const seededDiningData = decorateDiningData(seedMerchants, seedDishes)
-
-const merchants = ref(seededDiningData.merchants.map((merchant) => ({ ...merchant })))
-const dishes = ref(seededDiningData.dishes.map((dish) => ({ ...dish })))
+const merchants = ref([])
+const dishes = ref([])
 const homeSnapshot = ref({
-  counts: {
-    merchants: seededDiningData.merchants.length,
-    dishes: seededDiningData.dishes.length,
-    campusMerchants: seededDiningData.merchants.filter((merchant) => isCampusMerchant(merchant)).length,
-    takeoutMerchants: seededDiningData.merchants.filter((merchant) => {
-      return isOutsideMerchant(merchant) || isTakeawayMerchant(merchant)
-    }).length,
-  },
-  highlights: {
-    topTags: [],
-    updatedAt: null,
-  },
+  counts: { merchants: 0, dishes: 0, campusMerchants: 0, takeoutMerchants: 0 },
+  highlights: { topTags: [], updatedAt: null },
 })
 const loadedScopes = ref(new Set())
 const isBootstrapped = ref(false)
@@ -176,18 +163,6 @@ const syncMessage = ref('等待同步')
 const lastResult = ref(null)
 
 const safeClone = (value) => JSON.parse(JSON.stringify(value))
-const mergeRecordsById = (baseList = [], nextList = []) => {
-  const mergedMap = new Map(baseList.map((item) => [item.id, safeClone(item)]))
-
-  nextList.forEach((item) => {
-    mergedMap.set(item.id, {
-      ...(mergedMap.get(item.id) || {}),
-      ...safeClone(item),
-    })
-  })
-
-  return [...mergedMap.values()]
-}
 const normalizeText = (value) => String(value || '').trim()
 const normalizeCompareText = (value) => normalizeText(value).toLowerCase()
 
@@ -221,41 +196,6 @@ const sanitizeDiningData = (nextMerchants = [], nextDishes = []) => {
 }
 
 const createId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`
-
-const readLocalData = () => {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
-  const raw = window.localStorage.getItem(STORAGE_KEY)
-  if (!raw) {
-    return null
-  }
-
-  try {
-    return JSON.parse(raw)
-  } catch (error) {
-    console.warn('Local dining cache is broken.', error)
-    return null
-  }
-}
-
-const writeLocalData = () => {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  window.localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify({
-      merchants: safeClone(merchants.value),
-      dishes: safeClone(dishes.value),
-      homeSnapshot: safeClone(homeSnapshot.value),
-    }),
-  )
-}
-
-watch([merchants, dishes, homeSnapshot], writeLocalData, { deep: true })
 
 const rebuildHomeSnapshot = () => {
   const topTagScores = new Map()
@@ -296,42 +236,16 @@ const rebuildHomeSnapshot = () => {
   }
 }
 
-const hydrateLocalData = () => {
-  const cached = readLocalData()
-
-  if (!cached) {
-    rebuildHomeSnapshot()
-    return
-  }
-
-  const sanitized = sanitizeDiningData(
-    mergeRecordsById(
-      seededDiningData.merchants,
-      Array.isArray(cached.merchants) ? cached.merchants : [],
-    ),
-    mergeRecordsById(
-      seededDiningData.dishes,
-      Array.isArray(cached.dishes) ? cached.dishes : [],
-    ),
-  )
-
-  if (sanitized.merchants.length > 0) {
-    merchants.value = sanitized.merchants
-  }
-
-  if (sanitized.dishes.length > 0) {
-    dishes.value = sanitized.dishes
-  }
-
-  rebuildHomeSnapshot()
-}
-
 const ensureBootstrapped = () => {
-  if (isBootstrapped.value) {
-    return
+  if (isBootstrapped.value) return
+  if (typeof window !== 'undefined') {
+    try {
+      const cached = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || 'null')
+      if (cached?.merchants?.length) merchants.value = cached.merchants
+      if (cached?.dishes?.length) dishes.value = cached.dishes
+      if (cached?.merchants?.length || cached?.dishes?.length) rebuildHomeSnapshot()
+    } catch {}
   }
-
-  hydrateLocalData()
   isBootstrapped.value = true
 }
 
@@ -342,14 +256,8 @@ const applyCatalogPayload = (scope, payload) => {
 
   if (payload?.merchants || payload?.dishes) {
     const sanitized = sanitizeDiningData(
-      mergeRecordsById(
-        seededDiningData.merchants,
-        Array.isArray(payload.merchants) ? payload.merchants : merchants.value,
-      ),
-      mergeRecordsById(
-        seededDiningData.dishes,
-        Array.isArray(payload.dishes) ? payload.dishes : dishes.value,
-      ),
+      Array.isArray(payload.merchants) ? payload.merchants : merchants.value,
+      Array.isArray(payload.dishes) ? payload.dishes : dishes.value,
     )
 
     if (Array.isArray(payload.merchants)) {
@@ -359,6 +267,13 @@ const applyCatalogPayload = (scope, payload) => {
     if (Array.isArray(payload.dishes)) {
       dishes.value = sanitized.dishes
     }
+  }
+
+  if (typeof window !== 'undefined' && (Array.isArray(payload?.merchants) || Array.isArray(payload?.dishes))) {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      merchants: safeClone(merchants.value),
+      dishes: safeClone(dishes.value),
+    }))
   }
 
   if (scope === 'home' && payload?.counts) {
